@@ -65,13 +65,13 @@ export default function StatusPanel({ event, isLive, isTracking }: StatusPanelPr
             </div>
             <div className="flex gap-1.5 shrink-0">
               {isTracking && (
-                <Badge variant="outline" className="text-xs border-green-500/50 text-green-400">
+                <Badge variant="outline" className="text-xs border-green-500/50 text-green-600 dark:text-green-400">
                   <span className="mr-1 h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
                   Live
                 </Badge>
               )}
               {!isLive && (
-                <Badge variant="outline" className="text-xs border-yellow-500/50 text-yellow-400">
+                <Badge variant="outline" className="text-xs border-yellow-500/50 text-yellow-600 dark:text-yellow-400">
                   History
                 </Badge>
               )}

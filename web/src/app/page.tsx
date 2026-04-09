@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import TrackingInput from "@/components/tracker/tracking-input";
 import Timeline from "@/components/tracker/timeline";
 import StatusPanel from "@/components/tracker/status-panel";
 import { useTracker } from "@/hooks/use-tracker";
+import { useTheme } from "@/hooks/use-theme";
 import { Separator } from "@/components/ui/separator";
-import { MapIcon, Clock, History } from "lucide-react";
+import { MapIcon, Clock, History, Sun, Moon } from "lucide-react";
 
 const DeliveryMap = dynamic(() => import("@/components/tracker/delivery-map"), {
   ssr: false,
@@ -79,21 +81,27 @@ function LogsList({ onSelect }: { onSelect: (code: string) => void }) {
 export default function Home() {
   const [refreshInterval, setRefreshInterval] = useState(1000);
   const tracker = useTracker({ refreshInterval });
+  const { theme, toggle: toggleTheme } = useTheme();
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       {/* Header */}
       <header className="border-b px-6 py-3 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center">
-            <MapIcon className="h-4 w-4 text-primary" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center">
+              <MapIcon className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold leading-none">Wolt Delivery Tracker</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Real-time delivery tracking with GPS
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-semibold leading-none">Wolt Delivery Tracker</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Real-time delivery tracking with GPS
-            </p>
-          </div>
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className="shrink-0">
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
         </div>
       </header>
 
@@ -104,6 +112,7 @@ export default function Home() {
           <DeliveryMap
             event={tracker.currentEvent}
             courierTrail={tracker.courierTrail}
+            isDark={theme === "dark"}
           />
 
           {/* Map overlay: current ETA badge */}
@@ -148,7 +157,7 @@ export default function Home() {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Timeline</span>
                   {tracker.isLive && (
-                    <span className="text-xs text-green-400 ml-auto flex items-center gap-1">
+                    <span className="text-xs text-green-600 dark:text-green-400 ml-auto flex items-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                       Live
                     </span>

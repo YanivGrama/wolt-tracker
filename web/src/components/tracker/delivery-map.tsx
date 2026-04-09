@@ -45,16 +45,18 @@ const COURIER_ICON = new L.Icon({
   popupAnchor: [0, -14],
 });
 
+const TILE_URLS = {
+  light: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+};
+
 interface DeliveryMapProps {
   event: TrackingEvent | null;
   courierTrail: Coordinates[];
+  isDark?: boolean;
 }
 
-function FitBounds({
-  points,
-}: {
-  points: Coordinates[];
-}) {
+function FitBounds({ points }: { points: Coordinates[] }) {
   const map = useMap();
   const prevBoundsRef = useRef<string>("");
 
@@ -71,8 +73,10 @@ function FitBounds({
   return null;
 }
 
-export default function DeliveryMap({ event, courierTrail }: DeliveryMapProps) {
-  const defaultCenter: [number, number] = [32.07, 34.78]; // Tel Aviv area
+export default function DeliveryMap({ event, courierTrail, isDark = false }: DeliveryMapProps) {
+  const defaultCenter: [number, number] = [32.07, 34.78];
+
+  const tileUrl = isDark ? TILE_URLS.dark : TILE_URLS.light;
 
   const allPoints = useMemo(() => {
     if (!event) return [];
@@ -96,8 +100,9 @@ export default function DeliveryMap({ event, courierTrail }: DeliveryMapProps) {
       style={{ minHeight: "400px" }}
     >
       <TileLayer
-        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        key={tileUrl}
+        attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+        url={tileUrl}
       />
 
       <FitBounds points={allPoints} />
