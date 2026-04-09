@@ -11,7 +11,7 @@ coverage
 *.lcov
 
 # logs
-logs
+/logs
 _.log
 report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
@@ -26,6 +26,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .eslintcache
 .cache
 *.tsbuildinfo
+
+# Next.js
+.next
 
 # IntelliJ based IDEs
 .idea
