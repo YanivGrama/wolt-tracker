@@ -179,11 +179,19 @@ function LandingPage() {
       <main className="landing-body">
         {/* Hero text */}
         <div className="landing-hero">
-          <h1>Track your Wolt delivery<br />in real time.</h1>
+          <h1>
+            Track your Wolt delivery<br />
+            in <span className="accent">real time</span>.
+          </h1>
           <p>
             Paste your tracking link below — we'll show you exactly where your
             courier is and when to expect your order.
           </p>
+          <div className="feature-chips">
+            <span className="feature-chip">⚡ Real-time</span>
+            <span className="feature-chip">🔔 Push alerts</span>
+            <span className="feature-chip">🔗 Shareable</span>
+          </div>
         </div>
 
         {/* URL input form */}

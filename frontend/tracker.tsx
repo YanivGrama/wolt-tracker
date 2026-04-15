@@ -359,11 +359,20 @@ function TrackerPage({ code }: { code: string }) {
             <Map
               event={tracker.currentEvent}
               courierTrail={tracker.courierTrail}
+              isDelivered={isDelivered}
             />
           </Suspense>
 
-          {/* ETA overlay */}
-          {tracker.currentEvent?.eta.minutes != null && (
+          {/* Top-left overlay: Delivered badge or ETA */}
+          {isDelivered ? (
+            <div className="delivered-badge">
+              <div className="delivered-badge-icon">✓</div>
+              <div>
+                <div className="delivered-badge-title">Delivered</div>
+                <div className="delivered-badge-sub">Order complete</div>
+              </div>
+            </div>
+          ) : tracker.currentEvent?.eta.minutes != null && (
             <div className="eta-badge">
               <div className="eta-badge-num">{tracker.currentEvent.eta.minutes}</div>
               <div className="eta-badge-label">min to delivery</div>

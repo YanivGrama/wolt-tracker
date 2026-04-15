@@ -9,7 +9,7 @@ const RESTAURANT_SVG = encodeURIComponent(
 );
 
 const DESTINATION_SVG = encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%232563eb" width="32" height="32"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23009DE0" width="32" height="32"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>`,
 );
 
 const COURIER_SVG = encodeURIComponent(
@@ -19,9 +19,10 @@ const COURIER_SVG = encodeURIComponent(
 interface MapProps {
   event: TrackingEvent | null;
   courierTrail: Coordinates[];
+  isDelivered?: boolean;
 }
 
-export default function Map({ event, courierTrail }: MapProps) {
+export default function Map({ event, courierTrail, isDelivered = false }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<ReturnType<typeof L.map> | null>(null);
   const markersRef = useRef<{
@@ -164,16 +165,31 @@ export default function Map({ event, courierTrail }: MapProps) {
     return (
       <div className="map-placeholder">
         <div className="map-placeholder-icon">🗺️</div>
-        <p>Map loading…</p>
+        <div className="map-placeholder-title">Map loading…</div>
+        <div className="map-placeholder-desc">Fetching tiles, one sec.</div>
       </div>
     );
   }
 
   if (!hasAnyGps) {
+    if (isDelivered) {
+      return (
+        <div className="map-placeholder delivered">
+          <div className="map-placeholder-icon">🎉</div>
+          <div className="map-placeholder-title">Delivered</div>
+          <div className="map-placeholder-desc">
+            Your order arrived. Location data isn't available for this delivery.
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="map-placeholder">
         <div className="map-placeholder-icon">📡</div>
-        <p>Waiting for location data…</p>
+        <div className="map-placeholder-title">Waiting for location…</div>
+        <div className="map-placeholder-desc">
+          We'll pin the courier as soon as GPS data comes through.
+        </div>
       </div>
     );
   }
