@@ -1,0 +1,33 @@
+# Dependencies – reinstalled inside the image
+node_modules
+
+# Local build/caches
+.next
+out
+dist
+coverage
+*.tsbuildinfo
+.eslintcache
+.cache
+.DS_Store
+.idea
+.vscode
+
+# Legacy Next.js app (not used by the Bun server)
+web
+
+# Logs are mounted from Railway volume, don't bake them in
+logs
+
+# Secrets (provided via env vars in Railway)
+vapid-keys.json
+.env
+.env.*
+
+# Git metadata
+.git
+.gitignore
+.github
+
+# Docs / misc
+README.md

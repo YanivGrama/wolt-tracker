@@ -70,3 +70,35 @@ Each line in the JSONL log is a complete event:
 ```
 
 Logs are stored in the `logs/` directory, one file per tracking code.
+
+## Web UI (Bun server)
+
+Run the public-facing tracker as an online service:
+
+```bash
+bun run server.ts
+```
+
+Open <http://localhost:3000>, paste a Wolt tracking URL, and the page auto-redirects
+to `/track/<CODE>` with live WebSocket updates, a Leaflet map, and optional push
+notifications.
+
+## Deploying to Railway
+
+The project ships with a `Dockerfile` and `railway.json` for single-service
+deployment on [Railway](https://railway.com).
+
+1. Push the repo to GitHub and create a new Railway project from the repo.
+   Railway auto-detects `railway.json` and builds the Dockerfile.
+2. Add a **persistent volume** mounted at `/app/logs` so JSONL history survives
+   restarts.
+3. Set environment variables:
+   - `VAPID_PUBLIC_KEY` – generated with `bun -e "console.log(JSON.stringify(require('web-push').generateVAPIDKeys()))"`
+   - `VAPID_PRIVATE_KEY` – (from the same command)
+   - `VAPID_CONTACT_EMAIL` – e.g. `mailto:you@example.com`
+   - `PORT` is injected by Railway automatically.
+4. Deploy. Railway probes `/health` for readiness.
+
+The image is based on `mcr.microsoft.com/playwright:v1.59.1-jammy` (Chromium
+pre-installed) with Bun layered on top, so the tracker child processes can drive
+Playwright without any extra setup.

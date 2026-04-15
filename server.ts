@@ -37,13 +37,24 @@ let vapidKeys: VapidKeys = { publicKey: "", privateKey: "" };
 async function initPush() {
   try {
     webpush = await import("web-push");
-    if (existsSync(VAPID_FILE)) {
+
+    // 1. Prefer env vars (Railway / production)
+    const envPub = process.env.VAPID_PUBLIC_KEY;
+    const envPriv = process.env.VAPID_PRIVATE_KEY;
+    if (envPub && envPriv) {
+      vapidKeys = { publicKey: envPub, privateKey: envPriv };
+    } else if (existsSync(VAPID_FILE)) {
+      // 2. Fall back to on-disk file (local dev)
       vapidKeys = JSON.parse(readFileSync(VAPID_FILE, "utf-8")) as VapidKeys;
     } else {
+      // 3. Generate + persist locally (first run in dev)
       vapidKeys = webpush.generateVAPIDKeys();
-      writeFileSync(VAPID_FILE, JSON.stringify(vapidKeys, null, 2));
+      try { writeFileSync(VAPID_FILE, JSON.stringify(vapidKeys, null, 2)); }
+      catch { /* read-only FS in production – fine, keep in-memory */ }
     }
-    webpush.setVapidDetails("mailto:admin@localhost", vapidKeys.publicKey, vapidKeys.privateKey);
+
+    const contact = process.env.VAPID_CONTACT_EMAIL ?? "mailto:admin@localhost";
+    webpush.setVapidDetails(contact, vapidKeys.publicKey, vapidKeys.privateKey);
     console.log("✓ Push notifications enabled");
   } catch {
     console.warn("⚠ web-push not available — push notifications disabled");
@@ -327,6 +338,7 @@ await initPush();
 
 const server = Bun.serve<WsData>({
   port: PORT,
+  hostname: "0.0.0.0",
 
   routes: {
     // ── Pages ────────────────────────────────────────────────────────────────
@@ -355,6 +367,16 @@ const server = Bun.serve<WsData>({
     },
     "/api/push-unsubscribe": {
       POST: handlePushUnsubscribePost,
+    },
+
+    // ── Health check (Railway) ───────────────────────────────────────────────
+    "/health": {
+      GET: () => Response.json({
+        status: "ok",
+        activeTrackers: activeTrackers.size,
+        watchers: codeWatchers.size,
+        uptime: process.uptime(),
+      }),
     },
   },
 
