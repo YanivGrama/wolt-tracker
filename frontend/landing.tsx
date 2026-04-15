@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles/globals.css";
 
-const WOLT_URL_RE = /https?:\/\/track\.wolt\.com\/[^/]+\/s\/([A-Za-z0-9_-]+)/;
+const WOLT_URL_RE = /https?:\/\/track\.wolt\.com\/(?:[^/]+\/)?s\/([A-Za-z0-9_-]+)/;
 
 interface LogEntry {
   code: string;
