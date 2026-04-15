@@ -124,7 +124,7 @@ function extractCode(url: string): string | null {
 }
 
 function isValidWoltUrl(url: string): boolean {
-  return /track\.wolt\.com\/[^/]+\/s\/[A-Za-z0-9_-]+/.test(url);
+  return /track\.wolt\.com\/(?:[^/]+\/)?s\/[A-Za-z0-9_-]+/.test(url);
 }
 
 // ─────────────────────────────────────────
