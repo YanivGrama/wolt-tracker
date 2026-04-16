@@ -30,9 +30,6 @@ vapid-keys.json
 .cache
 *.tsbuildinfo
 
-# Next.js
-.next
-
 # IntelliJ based IDEs
 .idea
 

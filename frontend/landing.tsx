@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles/globals.css";
+import { Zap, Bell, LinkIcon, Link2, AlertCircle } from "./components/Icons";
+import ThemeToggle from "./components/ThemeToggle";
 
 const WOLT_URL_RE = /https?:\/\/track\.wolt\.com\/(?:[^/]+\/)?s\/([A-Za-z0-9_-]+)/;
 
@@ -27,7 +29,7 @@ function stepLabel(step: number): string {
     2: "Confirmed",
     3: "Preparing",
     4: "On the way",
-    5: "Delivered ✓",
+    5: "Delivered",
   };
   return labels[step] ?? "Unknown";
 }
@@ -72,17 +74,11 @@ function RecentDeliveries() {
                 className="step-dot"
                 style={{ background: stepColor(log.lastStep) }}
               />
-              <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+              <span className="recent-card-step">
                 {stepLabel(log.lastStep)}
               </span>
               {log.lastUpdatedAt && (
-                <span
-                  style={{
-                    fontSize: "11px",
-                    color: "var(--text-subtle)",
-                    marginLeft: "auto",
-                  }}
-                >
+                <span className="recent-card-time">
                   {timeAgo(log.lastUpdatedAt)}
                 </span>
               )}
@@ -100,7 +96,6 @@ function LandingPage() {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -133,7 +128,6 @@ function LandingPage() {
         return;
       }
 
-      // Redirect to tracker page
       window.location.href = `/track/${data.code}`;
     } catch {
       setError("Network error. Please check your connection and try again.");
@@ -143,7 +137,6 @@ function LandingPage() {
 
   function onPaste(e: React.ClipboardEvent<HTMLInputElement>) {
     const pasted = e.clipboardData.getData("text");
-    // Let React update the input value, then validate
     setTimeout(() => handleUrl(pasted), 0);
   }
 
@@ -151,7 +144,6 @@ function LandingPage() {
     const val = e.target.value;
     setValue(val);
     setError("");
-    // Clear error when user is typing
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -169,15 +161,15 @@ function LandingPage() {
 
   return (
     <div className="landing">
-      {/* Header */}
       <header className="landing-header">
         <div className="landing-logo">🛵</div>
         <span className="landing-title">Wolt Tracker</span>
+        <div style={{ marginLeft: "auto" }}>
+          <ThemeToggle />
+        </div>
       </header>
 
-      {/* Body */}
       <main className="landing-body">
-        {/* Hero text */}
         <div className="landing-hero">
           <h1>
             Track your Wolt delivery<br />
@@ -188,25 +180,28 @@ function LandingPage() {
             courier is and when to expect your order.
           </p>
           <div className="feature-chips">
-            <span className="feature-chip">⚡ Real-time</span>
-            <span className="feature-chip">🔔 Push alerts</span>
-            <span className="feature-chip">🔗 Shareable</span>
+            <span className="feature-chip">
+              <Zap size={14} className="chip-icon" /> Real-time
+            </span>
+            <span className="feature-chip">
+              <Bell size={14} className="chip-icon" /> Push alerts
+            </span>
+            <span className="feature-chip">
+              <LinkIcon size={14} className="chip-icon" /> Shareable
+            </span>
           </div>
         </div>
 
-        {/* URL input form */}
         <form onSubmit={onSubmit} style={{ width: "100%" }}>
           <div className="input-wrapper">
-            {/* Link icon */}
+            <label htmlFor="tracking-url" className="sr-only">Wolt tracking URL</label>
             <span className="input-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-              </svg>
+              <Link2 size={16} />
             </span>
 
             <input
               ref={inputRef}
+              id="tracking-url"
               type="url"
               className={`url-input${error ? " error" : ""}`}
               placeholder="Paste your Wolt tracking link…"
@@ -218,9 +213,10 @@ function LandingPage() {
               autoComplete="off"
               autoCorrect="off"
               spellCheck={false}
+              aria-describedby={error ? "url-error" : !hasValue ? "url-hint" : undefined}
+              aria-invalid={!!error}
             />
 
-            {/* Spinner or clear */}
             {loading && (
               <span className="input-spinner">
                 <span className="spinner" />
@@ -228,34 +224,26 @@ function LandingPage() {
             )}
           </div>
 
-          {/* Error message */}
           {error && (
-            <div className="input-error">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
+            <div className="input-error" id="url-error" role="alert">
+              <AlertCircle size={13} />
               {error}
             </div>
           )}
 
-          {/* Hint */}
           {!error && !hasValue && (
-            <div className="input-hint">
+            <div className="input-hint" id="url-hint">
               Link looks like: track.wolt.com/…/s/AbCdEf…
             </div>
           )}
 
-          {/* Track button (shows when user has typed something) */}
           {hasValue && !loading && (
             <button type="submit" className="track-btn">
-              Track delivery →
+              Track delivery
             </button>
           )}
         </form>
 
-        {/* Recent deliveries */}
         <RecentDeliveries />
       </main>
     </div>

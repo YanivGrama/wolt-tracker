@@ -17,6 +17,9 @@
     />
   </head>
   <body>
+    <script>
+      (function(){var t=localStorage.getItem('wolt-tracker-theme');if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark');else document.documentElement.classList.add('light');})();
+    </script>
     <div id="root"></div>
     <script type="module" src="./frontend/tracker.tsx"></script>
   </body>

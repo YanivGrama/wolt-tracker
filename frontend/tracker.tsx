@@ -5,8 +5,9 @@ import { useTracker } from "./hooks/useTracker";
 import StatusPanel from "./components/StatusPanel";
 import Timeline from "./components/Timeline";
 import DeliveryComplete from "./components/DeliveryComplete";
+import ThemeToggle from "./components/ThemeToggle";
+import { ArrowLeft, Share2, Bell, BellRing, Search, CircleHelp } from "./components/Icons";
 
-// Map is lazy-loaded (requires Leaflet global from CDN)
 const Map = lazy(() => import("./components/Map"));
 
 // ─────────────────────────────────────────
@@ -98,71 +99,26 @@ function ShareButton({ code }: { code: string }) {
 
   return (
     <>
-      <button className="icon-btn" onClick={share} title="Share tracking link">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-        </svg>
+      <button className="icon-btn" onClick={share} title="Share tracking link" aria-label="Share tracking link">
+        <Share2 size={13} />
         Share
       </button>
 
       {toast && (
-        <div className="share-toast">Link copied to clipboard ✓</div>
+        <div className="share-toast">Link copied to clipboard</div>
       )}
 
       {showFallback && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
-            padding: "16px",
-          }}
-          onClick={() => setShowFallback(false)}
-        >
-          <div
-            style={{
-              background: "var(--bg)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-md)",
-              padding: "24px",
-              maxWidth: "400px",
-              width: "100%",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p style={{ marginBottom: "12px", fontSize: "14px", fontWeight: "500" }}>
-              Copy this link:
-            </p>
+        <div className="share-overlay" onClick={() => setShowFallback(false)}>
+          <div className="share-dialog" onClick={(e) => e.stopPropagation()}>
+            <p className="share-dialog-label">Copy this link:</p>
             <input
               readOnly
+              className="share-dialog-input"
               value={`${location.origin}/track/${code}`}
               onFocus={(e) => e.target.select()}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-sm)",
-                background: "var(--bg-subtle)",
-                fontSize: "13px",
-                fontFamily: "var(--font-mono)",
-              }}
             />
-            <button
-              onClick={() => setShowFallback(false)}
-              style={{
-                marginTop: "12px",
-                padding: "8px 16px",
-                background: "var(--accent)",
-                color: "#fff",
-                borderRadius: "var(--radius-sm)",
-                fontSize: "13px",
-              }}
-            >
+            <button className="share-dialog-close" onClick={() => setShowFallback(false)}>
               Done
             </button>
           </div>
@@ -185,7 +141,6 @@ function NotificationButton({ code }: { code: string }) {
       return;
     }
     if (Notification.permission === "granted") {
-      // Check if we already have a subscription
       navigator.serviceWorker.ready
         .then((reg) => reg.pushManager.getSubscription())
         .then((sub) => setNotifState(sub ? "on" : "off"))
@@ -205,7 +160,6 @@ function NotificationButton({ code }: { code: string }) {
     const perm = await Notification.requestPermission();
     if (perm !== "granted") return;
 
-    // Register service worker if needed
     if ("serviceWorker" in navigator) {
       await navigator.serviceWorker.register("/sw.js");
     }
@@ -221,19 +175,16 @@ function NotificationButton({ code }: { code: string }) {
       className={`icon-btn${notifState === "on" ? " active" : ""}`}
       onClick={toggle}
       title={notifState === "on" ? "Disable notifications" : "Enable notifications"}
+      aria-label={notifState === "on" ? "Disable notifications" : "Enable notifications"}
     >
       {notifState === "on" ? (
         <>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
+          <BellRing size={13} />
           Notifs on
         </>
       ) : (
         <>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
+          <Bell size={13} />
           Notify me
         </>
       )}
@@ -248,14 +199,14 @@ function NotificationButton({ code }: { code: string }) {
 function NotFound({ code }: { code: string }) {
   return (
     <div className="not-found-state">
-      <div style={{ fontSize: "48px" }}>🔍</div>
+      <Search size={48} className="not-found-icon" />
       <h2>No tracking data found</h2>
       <p>
         We couldn't find any data for <code style={{ fontFamily: "var(--font-mono)", fontSize: "12px" }}>{code}</code>.
         The link may be expired or the tracking hasn't started yet.
       </p>
-      <a href="/" className="new-track-btn" style={{ marginTop: "8px" }}>
-        ← Track a new delivery
+      <a href="/" className="new-track-btn">
+        Track a new delivery
       </a>
     </div>
   );
@@ -270,7 +221,6 @@ function TrackerPage({ code }: { code: string }) {
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   useEffect(() => {
-    // Give it 3s to load before showing "not found"
     const timer = setTimeout(() => setInitialLoadDone(true), 3000);
     return () => clearTimeout(timer);
   }, []);
@@ -279,7 +229,6 @@ function TrackerPage({ code }: { code: string }) {
     if (tracker.events.length > 0) setInitialLoadDone(true);
   }, [tracker.events.length]);
 
-  // Update page title with restaurant name + ETA
   useEffect(() => {
     const ev = tracker.currentEvent;
     if (!ev) {
@@ -292,23 +241,22 @@ function TrackerPage({ code }: { code: string }) {
 
   const isDelivered = tracker.currentEvent?.status.step === 5;
 
-  // ── Render states ──────────────────────────────────────────────────────────
-
   if (!initialLoadDone && tracker.events.length === 0) {
     return (
       <div className="tracker">
         <header className="tracker-header">
           <div className="tracker-header-left">
-            <a href="/" className="back-btn" title="Back to home">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
+            <a href="/" className="back-btn" title="Back to home" aria-label="Back to home">
+              <ArrowLeft size={16} />
             </a>
             <div className="tracker-brand">
               <div className="tracker-brand-icon">🛵</div>
               <span className="tracker-brand-name">Wolt Tracker</span>
             </div>
             <span className="tracker-code-pill">{code}</span>
+          </div>
+          <div className="tracker-header-actions">
+            <ThemeToggle />
           </div>
         </header>
         <div className="loading-state">
@@ -325,13 +273,10 @@ function TrackerPage({ code }: { code: string }) {
 
   return (
     <div className="tracker">
-      {/* Header */}
       <header className="tracker-header">
         <div className="tracker-header-left">
-          <a href="/" className="back-btn" title="Back to home">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
+          <a href="/" className="back-btn" title="Back to home" aria-label="Back to home">
+            <ArrowLeft size={16} />
           </a>
           <div className="tracker-brand">
             <div className="tracker-brand-icon">🛵</div>
@@ -343,12 +288,11 @@ function TrackerPage({ code }: { code: string }) {
         <div className="tracker-header-actions">
           <ShareButton code={code} />
           {!isDelivered && <NotificationButton code={code} />}
+          <ThemeToggle />
         </div>
       </header>
 
-      {/* Main layout */}
       <div className="tracker-main">
-        {/* Map */}
         <div className="map-container">
           <Suspense fallback={
             <div className="map-placeholder">
@@ -363,7 +307,6 @@ function TrackerPage({ code }: { code: string }) {
             />
           </Suspense>
 
-          {/* Top-left overlay: Delivered badge or ETA */}
           {isDelivered ? (
             <div className="delivered-badge">
               <div className="delivered-badge-icon">✓</div>
@@ -380,10 +323,8 @@ function TrackerPage({ code }: { code: string }) {
           )}
         </div>
 
-        {/* Right panel */}
         <div className="tracker-panel">
           <div className="tracker-panel-scroll">
-            {/* Delivery complete banner */}
             {isDelivered && tracker.events.length > 0 && (
               <DeliveryComplete
                 firstEvent={tracker.events[0]!}
@@ -391,7 +332,6 @@ function TrackerPage({ code }: { code: string }) {
               />
             )}
 
-            {/* Status panel */}
             <StatusPanel
               event={tracker.currentEvent}
               isLive={tracker.isLive}
@@ -400,7 +340,6 @@ function TrackerPage({ code }: { code: string }) {
             />
           </div>
 
-          {/* Timeline footer */}
           {tracker.events.length > 0 && (
             <div className="timeline-footer">
               <Timeline
@@ -427,10 +366,10 @@ function App() {
   if (!code) {
     return (
       <div className="not-found-state">
-        <div style={{ fontSize: "48px" }}>😕</div>
+        <CircleHelp size={48} className="not-found-icon" />
         <h2>Invalid tracking URL</h2>
         <p>No tracking code found in the URL.</p>
-        <a href="/" className="new-track-btn">← Go home</a>
+        <a href="/" className="new-track-btn">Go home</a>
       </div>
     );
   }

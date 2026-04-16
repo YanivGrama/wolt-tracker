@@ -1,6 +1,7 @@
 import React from "react";
 import type { TrackingEvent } from "../../src/types";
 import type { ConnectionStatus } from "../hooks/useTracker";
+import { Clock, MapPin, Bike } from "./Icons";
 
 interface StatusPanelProps {
   event: TrackingEvent | null;
@@ -60,7 +61,7 @@ function ConnectionBadge({
 }) {
   if (status === "reconnecting") {
     return (
-      <span className="badge badge-reconnecting">
+      <span className="badge badge-reconnecting" role="status">
         <span className="pulse-dot" />
         Reconnecting
       </span>
@@ -68,17 +69,17 @@ function ConnectionBadge({
   }
   if (isTrackerActive && isLive) {
     return (
-      <span className="badge badge-live">
+      <span className="badge badge-live" role="status">
         <span className="pulse-dot" />
         Live
       </span>
     );
   }
   if (!isLive) {
-    return <span className="badge badge-history">History</span>;
+    return <span className="badge badge-history" role="status">History</span>;
   }
   return (
-    <span className="badge badge-waiting">
+    <span className="badge badge-waiting" role="status">
       <span className="pulse-dot" />
       Waiting
     </span>
@@ -107,7 +108,6 @@ export default function StatusPanel({
 
   return (
     <div className="status-card">
-      {/* Header */}
       <div className="status-card-header">
         <div className="restaurant-icon">{STEP_EMOJI[step] ?? "🍕"}</div>
         <div className="status-card-name">
@@ -123,12 +123,11 @@ export default function StatusPanel({
         </div>
       </div>
 
-      {/* Progress steps */}
       <div className="steps-container">
         <StepBar step={step} />
         <div className="current-status">
           <div className={`status-icon-wrap step-${step}`}>
-            <span style={{ fontSize: "16px" }}>{STEP_EMOJI[step]}</span>
+            <span>{STEP_EMOJI[step]}</span>
           </div>
           <div className="status-text">
             <div className="label">
@@ -141,11 +140,9 @@ export default function StatusPanel({
         </div>
       </div>
 
-      {/* Details */}
       <div className="details-grid">
-        {/* ETA */}
         <div className="detail-item">
-          <span className="detail-icon">⏱</span>
+          <span className="detail-icon"><Clock size={14} /></span>
           <div>
             <div className="detail-label">ETA</div>
             <div className={`detail-value ${event.eta.minutes !== null ? "highlight" : ""}`}>
@@ -154,19 +151,17 @@ export default function StatusPanel({
           </div>
         </div>
 
-        {/* Updated */}
         <div className="detail-item">
-          <span className="detail-icon">🕐</span>
+          <span className="detail-icon"><Clock size={14} /></span>
           <div>
             <div className="detail-label">Updated</div>
             <div className="detail-value mono">{formatTime(event.timestamp)}</div>
           </div>
         </div>
 
-        {/* Destination */}
         {event.gps.destination && (
           <div className="detail-item full">
-            <span className="detail-icon">📍</span>
+            <span className="detail-icon"><MapPin size={14} /></span>
             <div style={{ minWidth: 0 }}>
               <div className="detail-label">Destination</div>
               <div className="detail-value truncate">
@@ -177,10 +172,9 @@ export default function StatusPanel({
           </div>
         )}
 
-        {/* Courier */}
         {event.gps.courier && (
           <div className="detail-item full">
-            <span className="detail-icon">🛵</span>
+            <span className="detail-icon"><Bike size={14} /></span>
             <div>
               <div className="detail-label">Courier position</div>
               <div className="detail-value mono">

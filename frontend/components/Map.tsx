@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo } from "react";
 import type { TrackingEvent, Coordinates } from "../../src/types";
+import { MapIcon, Radio, CheckCircle } from "./Icons";
 
-// Leaflet is loaded via CDN in tracker.html, so it's available as a global
 declare const L: typeof import("leaflet");
 
 const RESTAURANT_SVG = encodeURIComponent(
@@ -32,22 +32,18 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
     trail?: ReturnType<typeof L.polyline>;
   }>({});
 
-  // Check if Leaflet is available
   const hasLeaflet = typeof L !== "undefined";
 
-  // No GPS data at all
   const hasAnyGps = useMemo(() => {
     if (!event) return false;
     return !!(event.gps.restaurant || event.gps.destination || event.gps.courier);
   }, [event]);
 
-  // ── Initialise map ────────────────────────────────────────────────────────
-
   useEffect(() => {
     if (!containerRef.current || !hasLeaflet || mapRef.current) return;
 
     const map = L.map(containerRef.current, {
-      center: [32.07, 34.78], // Tel Aviv default
+      center: [32.07, 34.78],
       zoom: 13,
       zoomControl: true,
     });
@@ -70,8 +66,6 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
     };
   }, [hasLeaflet]);
 
-  // ── Update markers when event changes ─────────────────────────────────────
-
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !hasLeaflet || !event) return;
@@ -88,7 +82,6 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
     const destinationIcon = makeIcon(DESTINATION_SVG, [32, 32], [16, 32]);
     const courierIcon = makeIcon(COURIER_SVG, [28, 28], [14, 14]);
 
-    // Restaurant marker
     if (event.gps.restaurant) {
       const pos: [number, number] = [event.gps.restaurant.lat, event.gps.restaurant.lng];
       if (markersRef.current.restaurant) {
@@ -100,7 +93,6 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
       }
     }
 
-    // Destination marker
     if (event.gps.destination) {
       const pos: [number, number] = [event.gps.destination.lat, event.gps.destination.lng];
       if (markersRef.current.destination) {
@@ -115,7 +107,6 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
       }
     }
 
-    // Courier marker
     if (event.gps.courier) {
       const pos: [number, number] = [event.gps.courier.lat, event.gps.courier.lng];
       if (markersRef.current.courier) {
@@ -126,12 +117,10 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
           .bindPopup("<strong>Courier</strong>");
       }
     } else if (markersRef.current.courier) {
-      // Courier disappeared — remove marker
       markersRef.current.courier.remove();
       markersRef.current.courier = undefined;
     }
 
-    // Fit bounds to all visible points
     const pts: [number, number][] = [];
     if (event.gps.restaurant) pts.push([event.gps.restaurant.lat, event.gps.restaurant.lng]);
     if (event.gps.destination) pts.push([event.gps.destination.lat, event.gps.destination.lng]);
@@ -140,8 +129,6 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
       map.fitBounds(L.latLngBounds(pts), { padding: [50, 50], maxZoom: 15 });
     }
   }, [event, hasLeaflet]);
-
-  // ── Update courier trail ───────────────────────────────────────────────────
 
   useEffect(() => {
     const map = mapRef.current;
@@ -164,7 +151,9 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
   if (!hasLeaflet) {
     return (
       <div className="map-placeholder">
-        <div className="map-placeholder-icon">🗺️</div>
+        <div className="map-placeholder-icon">
+          <MapIcon size={28} />
+        </div>
         <div className="map-placeholder-title">Map loading…</div>
         <div className="map-placeholder-desc">Fetching tiles, one sec.</div>
       </div>
@@ -175,7 +164,9 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
     if (isDelivered) {
       return (
         <div className="map-placeholder delivered">
-          <div className="map-placeholder-icon">🎉</div>
+          <div className="map-placeholder-icon">
+            <CheckCircle size={28} />
+          </div>
           <div className="map-placeholder-title">Delivered</div>
           <div className="map-placeholder-desc">
             Your order arrived. Location data isn't available for this delivery.
@@ -185,7 +176,9 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
     }
     return (
       <div className="map-placeholder">
-        <div className="map-placeholder-icon">📡</div>
+        <div className="map-placeholder-icon">
+          <Radio size={28} />
+        </div>
         <div className="map-placeholder-title">Waiting for location…</div>
         <div className="map-placeholder-desc">
           We'll pin the courier as soon as GPS data comes through.

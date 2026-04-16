@@ -1,5 +1,6 @@
 import React from "react";
 import type { TrackingEvent } from "../../src/types";
+import { MapPin } from "./Icons";
 
 interface DeliveryCompleteProps {
   firstEvent: TrackingEvent;
@@ -36,24 +37,13 @@ export default function DeliveryComplete({ firstEvent, lastEvent }: DeliveryComp
       </div>
 
       {lastEvent.destinationAddress && (
-        <div
-          style={{
-            fontSize: "12px",
-            color: "var(--text-muted)",
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "4px",
-          }}
-        >
-          <span>📍</span>
+        <div className="delivery-address">
+          <MapPin size={12} />
           <span>{lastEvent.destinationAddress}</span>
         </div>
       )}
 
       <a href="/" className="new-track-btn">
-        <span>+</span>
         Track another delivery
       </a>
     </div>
