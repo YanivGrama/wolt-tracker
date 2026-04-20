@@ -1,21 +1,22 @@
 import React from "react";
 import type { TrackingEvent } from "../../src/types";
 import type { ConnectionStatus } from "../hooks/useTracker";
-import { Clock, MapPin, Bike } from "./Icons";
+import { Clock, MapPin, Bike, ArrowRight } from "./Icons";
 
 interface StatusPanelProps {
   event: TrackingEvent | null;
+  prevEvent: TrackingEvent | null;
   isLive: boolean;
   isTrackerActive: boolean;
   connectionStatus: ConnectionStatus;
 }
 
 const STEP_EMOJI: Record<number, string> = {
-  1: "📋",
-  2: "👀",
-  3: "👨‍🍳",
-  4: "🛵",
-  5: "✅",
+  1: "\u{1F4CB}",
+  2: "\u{1F440}",
+  3: "\u{1F468}\u200D\u{1F373}",
+  4: "\u{1F6F5}",
+  5: "\u2705",
 };
 
 const STEP_LABELS: Record<number, string> = {
@@ -38,14 +39,35 @@ function formatTime(iso: string) {
   });
 }
 
-function StepBar({ step }: { step: number }) {
+function StepBar({ step, prevStep }: { step: number; prevStep?: number }) {
   return (
     <div className="steps-bar">
       {[1, 2, 3, 4, 5].map((s) => {
         const done = s <= step;
-        const stepClass = done ? `step-bar-segment done step-${s}` : "step-bar-segment inactive";
-        return <div key={s} className={stepClass} />;
+        const justChanged = prevStep !== undefined && s > prevStep && s <= step;
+        let cls = done ? `step-bar-segment done step-${s}` : "step-bar-segment inactive";
+        if (justChanged) cls += " step-just-changed";
+        return <div key={s} className={cls} />;
       })}
+    </div>
+  );
+}
+
+function StatusTransition({ prevStep, currStep }: { prevStep: number; currStep: number }) {
+  if (prevStep === currStep) return null;
+  return (
+    <div className="status-transition">
+      <div className="status-transition-from">
+        <span className={`status-transition-badge step-color-${prevStep}`}>
+          {STEP_EMOJI[prevStep]} {STEP_LABELS[prevStep] ?? `Step ${prevStep}`}
+        </span>
+      </div>
+      <ArrowRight size={14} className="status-transition-arrow" />
+      <div className="status-transition-to">
+        <span className={`status-transition-badge step-color-${currStep}`}>
+          {STEP_EMOJI[currStep]} {STEP_LABELS[currStep] ?? `Step ${currStep}`}
+        </span>
+      </div>
     </div>
   );
 }
@@ -66,6 +88,9 @@ function ConnectionBadge({
         Reconnecting
       </span>
     );
+  }
+  if (status === "idle") {
+    return <span className="badge badge-history" role="status">History</span>;
   }
   if (isTrackerActive && isLive) {
     return (
@@ -88,6 +113,7 @@ function ConnectionBadge({
 
 export default function StatusPanel({
   event,
+  prevEvent,
   isLive,
   isTrackerActive,
   connectionStatus,
@@ -95,7 +121,7 @@ export default function StatusPanel({
   if (!event) {
     return (
       <div className="empty-state">
-        <div className="empty-state-icon">📦</div>
+        <div className="empty-state-icon">{"\u{1F4E6}"}</div>
         <div className="empty-state-title">No data yet</div>
         <div className="empty-state-desc">
           Waiting for the first tracking update…
@@ -105,11 +131,13 @@ export default function StatusPanel({
   }
 
   const step = event.status.step;
+  const prevStep = prevEvent?.status.step;
+  const stepChanged = prevStep !== undefined && prevStep !== step;
 
   return (
     <div className="status-card">
       <div className="status-card-header">
-        <div className="restaurant-icon">{STEP_EMOJI[step] ?? "🍕"}</div>
+        <div className="restaurant-icon">{STEP_EMOJI[step] ?? "\u{1F355}"}</div>
         <div className="status-card-name">
           <h2>{event.restaurantName}</h2>
           <div className="code">{event.trackingCode}</div>
@@ -124,7 +152,12 @@ export default function StatusPanel({
       </div>
 
       <div className="steps-container">
-        <StepBar step={step} />
+        <StepBar step={step} prevStep={stepChanged ? prevStep : undefined} />
+
+        {stepChanged && (
+          <StatusTransition prevStep={prevStep!} currStep={step} />
+        )}
+
         <div className="current-status">
           <div className={`status-icon-wrap step-${step}`}>
             <span>{STEP_EMOJI[step]}</span>
@@ -146,7 +179,7 @@ export default function StatusPanel({
           <div>
             <div className="detail-label">ETA</div>
             <div className={`detail-value ${event.eta.minutes !== null ? "highlight" : ""}`}>
-              {event.eta.minutes !== null ? `${event.eta.minutes} min` : "—"}
+              {event.eta.minutes !== null ? `${event.eta.minutes} min` : "\u2014"}
             </div>
           </div>
         </div>

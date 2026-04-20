@@ -12,7 +12,6 @@ export interface UseTrackerResult {
   isLive: boolean;
   isTrackerActive: boolean;
   connectionStatus: ConnectionStatus;
-  /** Fetch full history for a code (history replay mode) */
   loadHistory: (code: string) => Promise<void>;
 }
 
@@ -29,8 +28,7 @@ export function useTracker(code: string): UseTrackerResult {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPollTs = useRef<string>("");
   const isMountedRef = useRef(true);
-
-  // ── Event helpers ──────────────────────────────────────────────────────────
+  const skipWsRef = useRef(false);
 
   const appendEvents = useCallback((newEvents: TrackingEvent[]) => {
     if (!isMountedRef.current) return;
@@ -48,8 +46,7 @@ export function useTracker(code: string): UseTrackerResult {
     });
   }, []);
 
-  // ── Polling fallback ───────────────────────────────────────────────────────
-
+  // Polling fallback
   const startPolling = useCallback(() => {
     if (pollRef.current) return;
     setConnectionStatus("polling");
@@ -77,10 +74,9 @@ export function useTracker(code: string): UseTrackerResult {
     }
   }, []);
 
-  // ── WebSocket ──────────────────────────────────────────────────────────────
-
+  // WebSocket
   const connectWs = useCallback(() => {
-    if (!isMountedRef.current) return;
+    if (!isMountedRef.current || skipWsRef.current) return;
 
     wsRef.current?.close();
     setConnectionStatus("connecting");
@@ -89,7 +85,6 @@ export function useTracker(code: string): UseTrackerResult {
     const ws = new WebSocket(`${proto}//${location.host}/ws/${code}`);
     wsRef.current = ws;
 
-    // Keepalive ping every 25s
     let pingInterval: ReturnType<typeof setInterval>;
 
     ws.onopen = () => {
@@ -123,15 +118,13 @@ export function useTracker(code: string): UseTrackerResult {
       }
     };
 
-    ws.onerror = () => {
-      /* handled in onclose */
-    };
+    ws.onerror = () => {};
 
     ws.onclose = () => {
       clearInterval(pingInterval);
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current || skipWsRef.current) return;
       setConnectionStatus("reconnecting");
-      startPolling(); // fall back to polling while reconnecting
+      startPolling();
 
       const delay = Math.min(1000 * 2 ** reconnectAttempts.current, 30_000);
       reconnectAttempts.current++;
@@ -142,35 +135,57 @@ export function useTracker(code: string): UseTrackerResult {
     };
   }, [code, appendEvents, startPolling, stopPolling]);
 
-  // ── Initial load + WS connect ─────────────────────────────────────────────
-
+  // Initial load + WS connect
   useEffect(() => {
     isMountedRef.current = true;
+    skipWsRef.current = false;
 
-    // Load existing events first
-    fetch(`/api/events?code=${encodeURIComponent(code)}`)
-      .then((r) => r.json())
-      .then((data: { events: TrackingEvent[] }) => {
+    let initialEvents: TrackingEvent[] = [];
+
+    const loadAndConnect = async () => {
+      // Load existing events
+      try {
+        const res = await fetch(`/api/events?code=${encodeURIComponent(code)}`);
+        const data = (await res.json()) as { events: TrackingEvent[] };
         if (!isMountedRef.current) return;
-        const evts = data.events ?? [];
-        setEvents(evts);
-        if (evts.length > 0) {
-          lastPollTs.current = evts[evts.length - 1]!.timestamp;
-          setCurrentIndexState(evts.length - 1);
+        initialEvents = data.events ?? [];
+        setEvents(initialEvents);
+        if (initialEvents.length > 0) {
+          lastPollTs.current = initialEvents[initialEvents.length - 1]!.timestamp;
         }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (isMountedRef.current) connectWs();
-      });
+      } catch {}
 
-    // Also check /api/status to know if tracker is live
-    fetch(`/api/status/${encodeURIComponent(code)}`)
-      .then((r) => r.json())
-      .then((data: { active: boolean }) => {
-        if (isMountedRef.current) setIsTrackerActive(data.active);
-      })
-      .catch(() => {});
+      // Check tracker status
+      let active = false;
+      try {
+        const res = await fetch(`/api/status/${encodeURIComponent(code)}`);
+        const data = (await res.json()) as { active: boolean };
+        if (isMountedRef.current) {
+          active = data.active;
+          setIsTrackerActive(data.active);
+        }
+      } catch {}
+
+      if (!isMountedRef.current) return;
+
+      const lastEvent = initialEvents[initialEvents.length - 1];
+      const isCompleted = !active && lastEvent && lastEvent.status.step >= 5;
+      const isAbandoned = !active && initialEvents.length > 0 && (!lastEvent || lastEvent.status.step < 5);
+
+      if (isCompleted || isAbandoned) {
+        skipWsRef.current = true;
+        setIsLive(false);
+        setConnectionStatus("idle");
+        setCurrentIndexState(0);
+      } else if (initialEvents.length > 0) {
+        setCurrentIndexState(initialEvents.length - 1);
+        connectWs();
+      } else {
+        connectWs();
+      }
+    };
+
+    loadAndConnect();
 
     return () => {
       isMountedRef.current = false;
@@ -181,16 +196,14 @@ export function useTracker(code: string): UseTrackerResult {
     };
   }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Auto-advance to latest when isLive ─────────────────────────────────────
-
+  // Auto-advance to latest when isLive
   useEffect(() => {
     if (isLive && events.length > 0) {
       setCurrentIndexState(events.length - 1);
     }
   }, [events.length, isLive]);
 
-  // ── Public index setter ────────────────────────────────────────────────────
-
+  // Public index setter
   const setCurrentIndex = useCallback(
     (i: number) => {
       setCurrentIndexState(i);
@@ -199,8 +212,7 @@ export function useTracker(code: string): UseTrackerResult {
     [events.length],
   );
 
-  // ── History loader (for replaying old deliveries) ─────────────────────────
-
+  // History loader (for replaying old deliveries)
   const loadHistory = useCallback(async (histCode: string) => {
     try {
       const res = await fetch(`/api/events?code=${encodeURIComponent(histCode)}`);
@@ -210,13 +222,10 @@ export function useTracker(code: string): UseTrackerResult {
       setCurrentIndexState(0);
       setIsLive(false);
       if (evts.length > 0) lastPollTs.current = evts[evts.length - 1]!.timestamp;
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, []);
 
-  // ── Courier trail ──────────────────────────────────────────────────────────
-
+  // Courier trail
   const courierTrail: Coordinates[] = [];
   for (let i = 0; i <= currentIndex; i++) {
     const ev = events[i];

@@ -13,6 +13,7 @@ interface LogEntry {
   startedAt?: string;
   lastUpdatedAt?: string;
   lastStep: number;
+  isActive?: boolean;
 }
 
 function stepColor(step: number): string {
@@ -45,6 +46,23 @@ function timeAgo(iso?: string): string {
   return new Date(iso).toLocaleDateString("en-GB");
 }
 
+function durationStr(startIso?: string, endIso?: string): string {
+  if (!startIso || !endIso) return "";
+  const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
+  if (ms <= 0) return "";
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  return `${h}h ${mins % 60}m`;
+}
+
+function cardStepClass(step: number): string {
+  if (step >= 5) return "step-delivered";
+  if (step >= 4) return "step-active";
+  if (step >= 3) return "step-preparing";
+  return "step-default";
+}
+
 function RecentDeliveries() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
@@ -61,30 +79,42 @@ function RecentDeliveries() {
     <div className="recent-section">
       <div className="recent-label">Recent deliveries</div>
       <div className="recent-grid">
-        {logs.map((log) => (
-          <a
-            key={log.code}
-            href={`/track/${log.code}`}
-            className="recent-card"
-          >
-            <div className="recent-card-name">{log.restaurantName}</div>
-            <div className="recent-card-meta">{log.code.slice(0, 14)}…</div>
-            <div className="recent-card-status">
-              <div
-                className="step-dot"
-                style={{ background: stepColor(log.lastStep) }}
-              />
-              <span className="recent-card-step">
-                {stepLabel(log.lastStep)}
-              </span>
-              {log.lastUpdatedAt && (
-                <span className="recent-card-time">
-                  {timeAgo(log.lastUpdatedAt)}
+        {logs.map((log) => {
+          const dur = durationStr(log.startedAt, log.lastUpdatedAt);
+          return (
+            <a
+              key={log.code}
+              href={`/track/${log.code}`}
+              className={`recent-card ${cardStepClass(log.lastStep)}`}
+            >
+              <div className="recent-card-name">{log.restaurantName}</div>
+              <div className="recent-card-meta">{log.code.slice(0, 14)}…</div>
+              <div className="recent-card-status">
+                <div
+                  className="step-dot"
+                  style={{ background: stepColor(log.lastStep) }}
+                />
+                <span className="recent-card-step">
+                  {stepLabel(log.lastStep)}
                 </span>
+                {log.lastUpdatedAt && (
+                  <span className="recent-card-time">
+                    {timeAgo(log.lastUpdatedAt)}
+                  </span>
+                )}
+              </div>
+              {(dur || log.eventCount > 0) && (
+                <div className="recent-card-duration">
+                  {dur && <span>{dur} total</span>}
+                  {dur && log.eventCount > 0 && <span> · </span>}
+                  {log.eventCount > 0 && (
+                    <span className="recent-card-events">{log.eventCount} events</span>
+                  )}
+                </div>
               )}
-            </div>
-          </a>
-        ))}
+            </a>
+          );
+        })}
       </div>
     </div>
   );
@@ -192,57 +222,59 @@ function LandingPage() {
           </div>
         </div>
 
-        <form onSubmit={onSubmit} style={{ width: "100%" }}>
-          <div className="input-wrapper">
-            <label htmlFor="tracking-url" className="sr-only">Wolt tracking URL</label>
-            <span className="input-icon">
-              <Link2 size={16} />
-            </span>
-
-            <input
-              ref={inputRef}
-              id="tracking-url"
-              type="url"
-              className={`url-input${error ? " error" : ""}`}
-              placeholder="Paste your Wolt tracking link…"
-              value={value}
-              onChange={onChange}
-              onPaste={onPaste}
-              onKeyDown={onKeyDown}
-              disabled={loading}
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              aria-describedby={error ? "url-error" : !hasValue ? "url-hint" : undefined}
-              aria-invalid={!!error}
-            />
-
-            {loading && (
-              <span className="input-spinner">
-                <span className="spinner" />
+        <div className="landing-input-card">
+          <form onSubmit={onSubmit} style={{ width: "100%" }}>
+            <div className="input-wrapper">
+              <label htmlFor="tracking-url" className="sr-only">Wolt tracking URL</label>
+              <span className="input-icon">
+                <Link2 size={16} />
               </span>
+
+              <input
+                ref={inputRef}
+                id="tracking-url"
+                type="url"
+                className={`url-input${error ? " error" : ""}`}
+                placeholder="Paste your Wolt tracking link…"
+                value={value}
+                onChange={onChange}
+                onPaste={onPaste}
+                onKeyDown={onKeyDown}
+                disabled={loading}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-describedby={error ? "url-error" : !hasValue ? "url-hint" : undefined}
+                aria-invalid={!!error}
+              />
+
+              {loading && (
+                <span className="input-spinner">
+                  <span className="spinner" />
+                </span>
+              )}
+            </div>
+
+            {error && (
+              <div className="input-error" id="url-error" role="alert">
+                <AlertCircle size={13} />
+                {error}
+              </div>
             )}
-          </div>
 
-          {error && (
-            <div className="input-error" id="url-error" role="alert">
-              <AlertCircle size={13} />
-              {error}
-            </div>
-          )}
+            {!error && !hasValue && (
+              <div className="input-hint" id="url-hint">
+                Link looks like: track.wolt.com/…/s/AbCdEf…
+              </div>
+            )}
 
-          {!error && !hasValue && (
-            <div className="input-hint" id="url-hint">
-              Link looks like: track.wolt.com/…/s/AbCdEf…
-            </div>
-          )}
-
-          {hasValue && !loading && (
-            <button type="submit" className="track-btn">
-              Track delivery
-            </button>
-          )}
-        </form>
+            {hasValue && !loading && (
+              <button type="submit" className="track-btn">
+                Track delivery
+              </button>
+            )}
+          </form>
+        </div>
 
         <RecentDeliveries />
       </main>

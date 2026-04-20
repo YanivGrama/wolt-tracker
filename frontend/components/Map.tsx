@@ -1,8 +1,24 @@
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useState } from "react";
 import type { TrackingEvent, Coordinates } from "../../src/types";
 import { MapIcon, Radio, CheckCircle } from "./Icons";
 
 declare const L: typeof import("leaflet");
+
+function useLeafletReady(): boolean {
+  const [ready, setReady] = useState(typeof L !== "undefined");
+  useEffect(() => {
+    if (ready) return;
+    const id = setInterval(() => {
+      if (typeof L !== "undefined") {
+        setReady(true);
+        clearInterval(id);
+      }
+    }, 100);
+    const timeout = setTimeout(() => clearInterval(id), 15_000);
+    return () => { clearInterval(id); clearTimeout(timeout); };
+  }, [ready]);
+  return ready;
+}
 
 const RESTAURANT_SVG = encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2316a34a" width="32" height="32"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>`,
@@ -32,7 +48,7 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
     trail?: ReturnType<typeof L.polyline>;
   }>({});
 
-  const hasLeaflet = typeof L !== "undefined";
+  const hasLeaflet = useLeafletReady();
 
   const hasAnyGps = useMemo(() => {
     if (!event) return false;
@@ -66,6 +82,8 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
     };
   }, [hasLeaflet]);
 
+  const prevGpsKey = useRef("");
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !hasLeaflet || !event) return;
@@ -82,51 +100,53 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
     const destinationIcon = makeIcon(DESTINATION_SVG, [32, 32], [16, 32]);
     const courierIcon = makeIcon(COURIER_SVG, [28, 28], [14, 14]);
 
-    if (event.gps.restaurant) {
-      const pos: [number, number] = [event.gps.restaurant.lat, event.gps.restaurant.lng];
-      if (markersRef.current.restaurant) {
-        markersRef.current.restaurant.setLatLng(pos);
-      } else {
-        markersRef.current.restaurant = L.marker(pos, { icon: restaurantIcon })
-          .addTo(map)
-          .bindPopup(`<strong>${event.restaurantName}</strong><br/>Restaurant`);
+    function upsertMarker(
+      key: "restaurant" | "destination" | "courier",
+      coords: { lat: number; lng: number } | null,
+      icon: ReturnType<typeof L.icon>,
+      popup: string,
+    ) {
+      if (coords) {
+        const pos: [number, number] = [coords.lat, coords.lng];
+        if (markersRef.current[key]) {
+          markersRef.current[key]!.setLatLng(pos);
+        } else {
+          markersRef.current[key] = L.marker(pos, { icon }).addTo(map).bindPopup(popup);
+        }
+      } else if (markersRef.current[key]) {
+        markersRef.current[key]!.remove();
+        markersRef.current[key] = undefined;
       }
     }
 
-    if (event.gps.destination) {
-      const pos: [number, number] = [event.gps.destination.lat, event.gps.destination.lng];
-      if (markersRef.current.destination) {
-        markersRef.current.destination.setLatLng(pos);
-      } else {
-        const popup = event.destinationAddress
-          ? `<strong>Destination</strong><br/>${event.destinationAddress}`
-          : "<strong>Delivery destination</strong>";
-        markersRef.current.destination = L.marker(pos, { icon: destinationIcon })
-          .addTo(map)
-          .bindPopup(popup);
-      }
-    }
+    upsertMarker(
+      "restaurant",
+      event.gps.restaurant,
+      restaurantIcon,
+      `<strong>${event.restaurantName}</strong><br/>Restaurant`,
+    );
 
-    if (event.gps.courier) {
-      const pos: [number, number] = [event.gps.courier.lat, event.gps.courier.lng];
-      if (markersRef.current.courier) {
-        markersRef.current.courier.setLatLng(pos);
-      } else {
-        markersRef.current.courier = L.marker(pos, { icon: courierIcon })
-          .addTo(map)
-          .bindPopup("<strong>Courier</strong>");
-      }
-    } else if (markersRef.current.courier) {
-      markersRef.current.courier.remove();
-      markersRef.current.courier = undefined;
-    }
+    const destPopup = event.destinationAddress
+      ? `<strong>Destination</strong><br/>${event.destinationAddress}`
+      : "<strong>Delivery destination</strong>";
+    upsertMarker("destination", event.gps.destination, destinationIcon, destPopup);
+    upsertMarker("courier", event.gps.courier, courierIcon, "<strong>Courier</strong>");
 
-    const pts: [number, number][] = [];
-    if (event.gps.restaurant) pts.push([event.gps.restaurant.lat, event.gps.restaurant.lng]);
-    if (event.gps.destination) pts.push([event.gps.destination.lat, event.gps.destination.lng]);
-    if (event.gps.courier) pts.push([event.gps.courier.lat, event.gps.courier.lng]);
-    if (pts.length > 0) {
-      map.fitBounds(L.latLngBounds(pts), { padding: [50, 50], maxZoom: 15 });
+    const gpsKey = [
+      event.gps.restaurant ? `r:${event.gps.restaurant.lat},${event.gps.restaurant.lng}` : "",
+      event.gps.destination ? `d:${event.gps.destination.lat},${event.gps.destination.lng}` : "",
+      event.gps.courier ? `c:${event.gps.courier.lat},${event.gps.courier.lng}` : "",
+    ].join("|");
+
+    if (gpsKey !== prevGpsKey.current) {
+      prevGpsKey.current = gpsKey;
+      const pts: [number, number][] = [];
+      if (event.gps.restaurant) pts.push([event.gps.restaurant.lat, event.gps.restaurant.lng]);
+      if (event.gps.destination) pts.push([event.gps.destination.lat, event.gps.destination.lng]);
+      if (event.gps.courier) pts.push([event.gps.courier.lat, event.gps.courier.lng]);
+      if (pts.length > 0) {
+        map.fitBounds(L.latLngBounds(pts), { padding: [50, 50], maxZoom: 15 });
+      }
     }
   }, [event, hasLeaflet]);
 
@@ -137,7 +157,12 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
     const trail: [number, number][] = courierTrail.map((c) => [c.lat, c.lng]);
 
     if (markersRef.current.trail) {
-      markersRef.current.trail.setLatLngs(trail);
+      if (trail.length <= 1) {
+        markersRef.current.trail.remove();
+        markersRef.current.trail = undefined;
+      } else {
+        markersRef.current.trail.setLatLngs(trail);
+      }
     } else if (trail.length > 1) {
       markersRef.current.trail = L.polyline(trail, {
         color: "#f97316",

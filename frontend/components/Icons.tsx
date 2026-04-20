@@ -166,6 +166,46 @@ export function CheckCircle(props: IconProps) {
   </>);
 }
 
+export function ArrowRight(props: IconProps) {
+  return svg(props, <>
+    <path d="M5 12h14" />
+    <path d="m12 5 7 7-7 7" />
+  </>);
+}
+
+export function Play(props: IconProps) {
+  return svg(props, <polygon points="6 3 20 12 6 21 6 3" fill="currentColor" stroke="currentColor" />);
+}
+
+export function Pause(props: IconProps) {
+  return svg(props, <>
+    <rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" />
+    <rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" />
+  </>);
+}
+
+export function SkipBack(props: IconProps) {
+  return svg(props, <>
+    <polygon points="19 20 9 12 19 4 19 20" />
+    <line x1="5" y1="19" x2="5" y2="5" />
+  </>);
+}
+
+export function SkipForward(props: IconProps) {
+  return svg(props, <>
+    <polygon points="5 4 15 12 5 20 5 4" />
+    <line x1="19" y1="5" x2="19" y2="19" />
+  </>);
+}
+
+export function ChevronLeft(props: IconProps) {
+  return svg(props, <path d="m15 18-6-6 6-6" />);
+}
+
+export function ChevronRight(props: IconProps) {
+  return svg(props, <path d="m9 18 6-6-6-6" />);
+}
+
 export function Dot(props: IconProps) {
   const { size = 16, className = "" } = props;
   return (

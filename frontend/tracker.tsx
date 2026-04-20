@@ -334,6 +334,7 @@ function TrackerPage({ code }: { code: string }) {
 
             <StatusPanel
               event={tracker.currentEvent}
+              prevEvent={tracker.currentIndex > 0 ? tracker.events[tracker.currentIndex - 1] ?? null : null}
               isLive={tracker.isLive}
               isTrackerActive={tracker.isTrackerActive}
               connectionStatus={tracker.connectionStatus}
