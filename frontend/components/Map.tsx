@@ -5,6 +5,10 @@ import { MapIcon, Radio, CheckCircle } from "./Icons";
 
 declare const L: typeof import("leaflet");
 
+const TILE_LIGHT = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const TILE_DARK = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+const TILE_ATTR = '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>';
+
 function useLeafletReady(): boolean {
   const [ready, setReady] = useState(typeof L !== "undefined");
   useEffect(() => {
@@ -19,6 +23,20 @@ function useLeafletReady(): boolean {
     return () => { clearInterval(id); clearTimeout(timeout); };
   }, [ready]);
   return ready;
+}
+
+function isDarkMode(): boolean {
+  return document.documentElement.classList.contains("dark");
+}
+
+function useDarkMode(): boolean {
+  const [dark, setDark] = useState(isDarkMode);
+  useEffect(() => {
+    const observer = new MutationObserver(() => setDark(isDarkMode()));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+  return dark;
 }
 
 const RESTAURANT_SVG = encodeURIComponent(
@@ -43,6 +61,7 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
   const { t } = useLocale();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<ReturnType<typeof L.map> | null>(null);
+  const tileRef = useRef<ReturnType<typeof L.tileLayer> | null>(null);
   const markersRef = useRef<{
     restaurant?: ReturnType<typeof L.marker>;
     destination?: ReturnType<typeof L.marker>;
@@ -51,6 +70,7 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
   }>({});
 
   const hasLeaflet = useLeafletReady();
+  const dark = useDarkMode();
 
   const hasAnyGps = useMemo(() => {
     if (!event) return false;
@@ -66,13 +86,9 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
       zoomControl: true,
     });
 
-    L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-      {
-        attribution:
-          '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-        maxZoom: 19,
-      },
+    tileRef.current = L.tileLayer(
+      dark ? TILE_DARK : TILE_LIGHT,
+      { attribution: TILE_ATTR, maxZoom: 19 },
     ).addTo(map);
 
     mapRef.current = map;
@@ -80,9 +96,16 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
     return () => {
       map.remove();
       mapRef.current = null;
+      tileRef.current = null;
       markersRef.current = {};
     };
   }, [hasLeaflet]);
+
+  useEffect(() => {
+    if (!mapRef.current || !tileRef.current || !hasLeaflet) return;
+    const url = dark ? TILE_DARK : TILE_LIGHT;
+    tileRef.current.setUrl(url);
+  }, [dark, hasLeaflet]);
 
   const prevGpsKey = useRef("");
 
