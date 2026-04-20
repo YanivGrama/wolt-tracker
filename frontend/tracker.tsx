@@ -6,7 +6,6 @@ import StatusPanel from "./components/StatusPanel";
 import Timeline from "./components/Timeline";
 import DeliveryComplete from "./components/DeliveryComplete";
 import ThemeToggle from "./components/ThemeToggle";
-import LanguageToggle from "./components/LanguageToggle";
 import ResizeHandle from "./components/ResizeHandle";
 import { ArrowLeft, Share2, Bell, BellRing, Search, CircleHelp } from "./components/Icons";
 import { LocaleProvider, useLocale } from "./i18n";
@@ -277,7 +276,6 @@ function TrackerPage({ code }: { code: string }) {
             <span className="tracker-code-pill" dir="ltr">{code}</span>
           </div>
           <div className="tracker-header-actions">
-            <LanguageToggle />
             <ThemeToggle />
           </div>
         </header>
@@ -312,7 +310,6 @@ function TrackerPage({ code }: { code: string }) {
         <div className="tracker-header-actions">
           <ShareButton code={code} />
           {!isDelivered && <NotificationButton code={code} />}
-          <LanguageToggle />
           <ThemeToggle />
         </div>
       </header>

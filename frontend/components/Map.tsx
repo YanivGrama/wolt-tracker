@@ -39,17 +39,15 @@ function useDarkMode(): boolean {
   return dark;
 }
 
-const RESTAURANT_SVG = encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2316a34a" width="32" height="32"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>`,
-);
-
-const DESTINATION_SVG = encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23009DE0" width="32" height="32"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>`,
-);
-
-const COURIER_SVG = encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="28" height="28"><circle cx="14" cy="14" r="13" fill="%23f97316" stroke="white" stroke-width="2"/><text x="14" y="19" text-anchor="middle" fill="white" font-size="14" font-family="sans-serif">🛵</text></svg>`,
-);
+function emojiIcon(emoji: string, size: number, borderColor: string) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="font-size:${size}px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));text-align:center;border:none;background:none">${emoji}</div>`,
+    iconSize: [size + 4, size + 4],
+    iconAnchor: [(size + 4) / 2, size + 2],
+    popupAnchor: [0, -(size + 2)],
+  });
+}
 
 interface MapProps {
   event: TrackingEvent | null;
@@ -113,22 +111,14 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
     const map = mapRef.current;
     if (!map || !hasLeaflet || !event) return;
 
-    const makeIcon = (svg: string, size: [number, number], anchor: [number, number]) =>
-      L.icon({
-        iconUrl: `data:image/svg+xml,${svg}`,
-        iconSize: size,
-        iconAnchor: anchor,
-        popupAnchor: [0, -anchor[1]],
-      });
-
-    const restaurantIcon = makeIcon(RESTAURANT_SVG, [32, 32], [16, 32]);
-    const destinationIcon = makeIcon(DESTINATION_SVG, [32, 32], [16, 32]);
-    const courierIcon = makeIcon(COURIER_SVG, [28, 28], [14, 14]);
+    const restaurantIcon = emojiIcon("🍽️", 32, "#16a34a");
+    const destinationIcon = emojiIcon("📍", 32, "#009DE0");
+    const courierIcon = emojiIcon("🛵", 30, "#f97316");
 
     function upsertMarker(
       key: "restaurant" | "destination" | "courier",
       coords: { lat: number; lng: number } | null,
-      icon: ReturnType<typeof L.icon>,
+      icon: ReturnType<typeof L.divIcon>,
       popup: string,
     ) {
       if (coords) {

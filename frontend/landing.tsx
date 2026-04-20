@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import "./styles/globals.css";
 import { Zap, Bell, LinkIcon, Link2, AlertCircle } from "./components/Icons";
 import ThemeToggle from "./components/ThemeToggle";
-import LanguageToggle from "./components/LanguageToggle";
 import { LocaleProvider, useLocale, timeLocale } from "./i18n";
 
 const WOLT_URL_RE = /https?:\/\/track\.wolt\.com\/(?:[^/]+\/)?s\/([A-Za-z0-9_-]+)/;
@@ -190,8 +189,7 @@ function LandingPage() {
       <header className="landing-header">
         <div className="landing-logo">🛵</div>
         <span className="landing-title">{t("brand")}</span>
-        <div style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: 8 }}>
-          <LanguageToggle />
+        <div style={{ marginInlineStart: "auto" }}>
           <ThemeToggle />
         </div>
       </header>
