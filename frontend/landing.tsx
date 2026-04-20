@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles/globals.css";
+import { Zap, Bell, LinkIcon, Link2, AlertCircle } from "./components/Icons";
+import ThemeToggle from "./components/ThemeToggle";
+import { LocaleProvider, useLocale, timeLocale } from "./i18n";
 
 const WOLT_URL_RE = /https?:\/\/track\.wolt\.com\/(?:[^/]+\/)?s\/([A-Za-z0-9_-]+)/;
 
@@ -11,6 +14,7 @@ interface LogEntry {
   startedAt?: string;
   lastUpdatedAt?: string;
   lastStep: number;
+  isActive?: boolean;
 }
 
 function stepColor(step: number): string {
@@ -20,31 +24,41 @@ function stepColor(step: number): string {
   return "var(--step-inactive)";
 }
 
-function stepLabel(step: number): string {
-  const labels: Record<number, string> = {
-    0: "Not started",
-    1: "Received",
-    2: "Confirmed",
-    3: "Preparing",
-    4: "On the way",
-    5: "Delivered ✓",
-  };
-  return labels[step] ?? "Unknown";
+function cardStepClass(step: number): string {
+  if (step >= 5) return "step-delivered";
+  if (step >= 4) return "step-active";
+  if (step >= 3) return "step-preparing";
+  return "step-default";
 }
 
-function timeAgo(iso?: string): string {
-  if (!iso) return "";
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return new Date(iso).toLocaleDateString("en-GB");
+function durationStr(startIso?: string, endIso?: string): string {
+  if (!startIso || !endIso) return "";
+  const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
+  if (ms <= 0) return "";
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  return `${h}h ${mins % 60}m`;
 }
 
 function RecentDeliveries() {
+  const { t, locale } = useLocale();
   const [logs, setLogs] = useState<LogEntry[]>([]);
+
+  function stepLabel(step: number): string {
+    return t(`step.${step}` as any);
+  }
+
+  function timeAgo(iso?: string): string {
+    if (!iso) return "";
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60_000);
+    if (mins < 1) return t("time.justNow");
+    if (mins < 60) return t("time.mAgo", { n: mins });
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return t("time.hAgo", { n: hours });
+    return new Date(iso).toLocaleDateString(timeLocale(locale));
+  }
 
   useEffect(() => {
     fetch("/api/logs")
@@ -57,50 +71,56 @@ function RecentDeliveries() {
 
   return (
     <div className="recent-section">
-      <div className="recent-label">Recent deliveries</div>
+      <div className="recent-label">{t("landing.recent.title")}</div>
       <div className="recent-grid">
-        {logs.map((log) => (
-          <a
-            key={log.code}
-            href={`/track/${log.code}`}
-            className="recent-card"
-          >
-            <div className="recent-card-name">{log.restaurantName}</div>
-            <div className="recent-card-meta">{log.code.slice(0, 14)}…</div>
-            <div className="recent-card-status">
-              <div
-                className="step-dot"
-                style={{ background: stepColor(log.lastStep) }}
-              />
-              <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                {stepLabel(log.lastStep)}
-              </span>
-              {log.lastUpdatedAt && (
-                <span
-                  style={{
-                    fontSize: "11px",
-                    color: "var(--text-subtle)",
-                    marginLeft: "auto",
-                  }}
-                >
-                  {timeAgo(log.lastUpdatedAt)}
+        {logs.map((log) => {
+          const dur = durationStr(log.startedAt, log.lastUpdatedAt);
+          return (
+            <a
+              key={log.code}
+              href={`/track/${log.code}`}
+              className={`recent-card ${cardStepClass(log.lastStep)}`}
+            >
+              <div className="recent-card-name">{log.restaurantName}</div>
+              <div className="recent-card-meta" dir="ltr">{log.code.slice(0, 14)}…</div>
+              <div className="recent-card-status">
+                <div
+                  className="step-dot"
+                  style={{ background: stepColor(log.lastStep) }}
+                />
+                <span className="recent-card-step">
+                  {stepLabel(log.lastStep)}
                 </span>
+                {log.lastUpdatedAt && (
+                  <span className="recent-card-time">
+                    {timeAgo(log.lastUpdatedAt)}
+                  </span>
+                )}
+              </div>
+              {(dur || log.eventCount > 0) && (
+                <div className="recent-card-duration">
+                  {dur && <span>{dur} {t("landing.recent.total")}</span>}
+                  {dur && log.eventCount > 0 && <span> · </span>}
+                  {log.eventCount > 0 && (
+                    <span className="recent-card-events">{log.eventCount} {t("landing.recent.events")}</span>
+                  )}
+                </div>
               )}
-            </div>
-          </a>
-        ))}
+            </a>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 function LandingPage() {
+  const { t } = useLocale();
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -111,7 +131,7 @@ function LandingPage() {
 
     const match = url.match(WOLT_URL_RE);
     if (!match) {
-      setError("That doesn't look like a valid Wolt tracking link. It should start with track.wolt.com.");
+      setError(t("landing.error.invalid"));
       return;
     }
 
@@ -128,22 +148,20 @@ function LandingPage() {
       const data = (await res.json()) as { code?: string; error?: string };
 
       if (!res.ok || !data.code) {
-        setError(data.error ?? "Something went wrong. Please try again.");
+        setError(data.error ?? t("landing.error.generic"));
         setLoading(false);
         return;
       }
 
-      // Redirect to tracker page
       window.location.href = `/track/${data.code}`;
     } catch {
-      setError("Network error. Please check your connection and try again.");
+      setError(t("landing.error.network"));
       setLoading(false);
     }
   }
 
   function onPaste(e: React.ClipboardEvent<HTMLInputElement>) {
     const pasted = e.clipboardData.getData("text");
-    // Let React update the input value, then validate
     setTimeout(() => handleUrl(pasted), 0);
   }
 
@@ -151,7 +169,6 @@ function LandingPage() {
     const val = e.target.value;
     setValue(val);
     setError("");
-    // Clear error when user is typing
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -169,85 +186,89 @@ function LandingPage() {
 
   return (
     <div className="landing">
-      {/* Header */}
       <header className="landing-header">
         <div className="landing-logo">🛵</div>
-        <span className="landing-title">Wolt Tracker</span>
+        <span className="landing-title">{t("brand")}</span>
+        <div style={{ marginInlineStart: "auto" }}>
+          <ThemeToggle />
+        </div>
       </header>
 
-      {/* Body */}
       <main className="landing-body">
-        {/* Hero text */}
         <div className="landing-hero">
-          <h1>Track your Wolt delivery<br />in real time.</h1>
-          <p>
-            Paste your tracking link below — we'll show you exactly where your
-            courier is and when to expect your order.
-          </p>
+          <h1>
+            {t("landing.hero.title1")}<br />
+            <span className="accent">{t("landing.hero.title2")}</span>
+          </h1>
+          <p>{t("landing.hero.subtitle")}</p>
+          <div className="feature-chips">
+            <span className="feature-chip">
+              <Zap size={14} className="chip-icon" /> {t("landing.chip.realtime")}
+            </span>
+            <span className="feature-chip">
+              <Bell size={14} className="chip-icon" /> {t("landing.chip.push")}
+            </span>
+            <span className="feature-chip">
+              <LinkIcon size={14} className="chip-icon" /> {t("landing.chip.share")}
+            </span>
+          </div>
         </div>
 
-        {/* URL input form */}
-        <form onSubmit={onSubmit} style={{ width: "100%" }}>
-          <div className="input-wrapper">
-            {/* Link icon */}
-            <span className="input-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-              </svg>
-            </span>
-
-            <input
-              ref={inputRef}
-              type="url"
-              className={`url-input${error ? " error" : ""}`}
-              placeholder="Paste your Wolt tracking link…"
-              value={value}
-              onChange={onChange}
-              onPaste={onPaste}
-              onKeyDown={onKeyDown}
-              disabled={loading}
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-
-            {/* Spinner or clear */}
-            {loading && (
-              <span className="input-spinner">
-                <span className="spinner" />
+        <div className="landing-input-card">
+          <form onSubmit={onSubmit} style={{ width: "100%" }}>
+            <div className="input-wrapper">
+              <label htmlFor="tracking-url" className="sr-only">{t("landing.input.label")}</label>
+              <span className="input-icon">
+                <Link2 size={16} />
               </span>
+
+              <input
+                ref={inputRef}
+                id="tracking-url"
+                type="url"
+                className={`url-input${error ? " error" : ""}`}
+                placeholder={t("landing.input.placeholder")}
+                value={value}
+                onChange={onChange}
+                onPaste={onPaste}
+                onKeyDown={onKeyDown}
+                disabled={loading}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                dir="ltr"
+                aria-describedby={error ? "url-error" : !hasValue ? "url-hint" : undefined}
+                aria-invalid={!!error}
+              />
+
+              {loading && (
+                <span className="input-spinner">
+                  <span className="spinner" />
+                </span>
+              )}
+            </div>
+
+            {error && (
+              <div className="input-error" id="url-error" role="alert">
+                <AlertCircle size={13} />
+                {error}
+              </div>
             )}
-          </div>
 
-          {/* Error message */}
-          {error && (
-            <div className="input-error">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-              {error}
-            </div>
-          )}
+            {!error && !hasValue && (
+              <div className="input-hint" id="url-hint" dir="ltr">
+                {t("landing.input.hint")}
+              </div>
+            )}
 
-          {/* Hint */}
-          {!error && !hasValue && (
-            <div className="input-hint">
-              Link looks like: track.wolt.com/…/s/AbCdEf…
-            </div>
-          )}
+            {hasValue && !loading && (
+              <button type="submit" className="track-btn">
+                {t("landing.input.btn")}
+              </button>
+            )}
+          </form>
+        </div>
 
-          {/* Track button (shows when user has typed something) */}
-          {hasValue && !loading && (
-            <button type="submit" className="track-btn">
-              Track delivery →
-            </button>
-          )}
-        </form>
-
-        {/* Recent deliveries */}
         <RecentDeliveries />
       </main>
     </div>
@@ -255,4 +276,8 @@ function LandingPage() {
 }
 
 const root = createRoot(document.getElementById("root")!);
-root.render(<LandingPage />);
+root.render(
+  <LocaleProvider>
+    <LandingPage />
+  </LocaleProvider>,
+);

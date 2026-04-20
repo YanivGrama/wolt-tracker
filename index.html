@@ -11,6 +11,9 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛵</text></svg>" />
   </head>
   <body>
+    <script>
+      (function(){var t=localStorage.getItem('wolt-tracker-theme');if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark');else document.documentElement.classList.add('light');var l=localStorage.getItem('wolt-tracker-locale');if(l==='he'){document.documentElement.dir='rtl';document.documentElement.lang='he';}})();
+    </script>
     <div id="root"></div>
     <script type="module" src="./frontend/landing.tsx"></script>
   </body>

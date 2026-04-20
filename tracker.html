@@ -15,8 +15,16 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
   </head>
   <body>
+    <script>
+      (function(){var t=localStorage.getItem('wolt-tracker-theme');if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark');else document.documentElement.classList.add('light');var l=localStorage.getItem('wolt-tracker-locale');if(l==='he'){document.documentElement.dir='rtl';document.documentElement.lang='he';}})();
+    </script>
     <div id="root"></div>
     <script type="module" src="./frontend/tracker.tsx"></script>
   </body>

@@ -1,5 +1,7 @@
 import React from "react";
 import type { TrackingEvent } from "../../src/types";
+import { useLocale } from "../i18n";
+import { MapPin } from "./Icons";
 
 interface DeliveryCompleteProps {
   firstEvent: TrackingEvent;
@@ -15,46 +17,36 @@ function formatDuration(ms: number) {
 }
 
 export default function DeliveryComplete({ firstEvent, lastEvent }: DeliveryCompleteProps) {
+  const { t } = useLocale();
   const durationMs =
     new Date(lastEvent.timestamp).getTime() - new Date(firstEvent.timestamp).getTime();
 
   return (
     <div className="delivery-complete">
       <div className="delivery-complete-icon">🎉</div>
-      <h3>Delivered!</h3>
-      <p>Your order from {lastEvent.restaurantName} has arrived.</p>
+      <h3>{t("delivered.title")}</h3>
+      <p>{t("delivered.desc", { name: lastEvent.restaurantName })}</p>
 
       <div className="delivery-stats">
         <div className="delivery-stat">
-          <div className="delivery-stat-label">Total time</div>
-          <div className="delivery-stat-value">{formatDuration(durationMs)}</div>
+          <div className="delivery-stat-label">{t("delivered.totalTime")}</div>
+          <div className="delivery-stat-value" dir="ltr">{formatDuration(durationMs)}</div>
         </div>
         <div className="delivery-stat">
-          <div className="delivery-stat-label">Status updates</div>
+          <div className="delivery-stat-label">{t("delivered.updates")}</div>
           <div className="delivery-stat-value">—</div>
         </div>
       </div>
 
       {lastEvent.destinationAddress && (
-        <div
-          style={{
-            fontSize: "12px",
-            color: "var(--text-muted)",
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "4px",
-          }}
-        >
-          <span>📍</span>
+        <div className="delivery-address">
+          <MapPin size={12} />
           <span>{lastEvent.destinationAddress}</span>
         </div>
       )}
 
       <a href="/" className="new-track-btn">
-        <span>+</span>
-        Track another delivery
+        {t("delivered.trackAnother")}
       </a>
     </div>
   );
