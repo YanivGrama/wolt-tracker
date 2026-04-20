@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
 import type { TrackingEvent, Coordinates } from "../../src/types";
+import { useLocale } from "../i18n";
 import { MapIcon, Radio, CheckCircle } from "./Icons";
 
 declare const L: typeof import("leaflet");
@@ -39,6 +40,7 @@ interface MapProps {
 }
 
 export default function Map({ event, courierTrail, isDelivered = false }: MapProps) {
+  const { t } = useLocale();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<ReturnType<typeof L.map> | null>(null);
   const markersRef = useRef<{
@@ -123,14 +125,14 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
       "restaurant",
       event.gps.restaurant,
       restaurantIcon,
-      `<strong>${event.restaurantName}</strong><br/>Restaurant`,
+      `<strong>${event.restaurantName}</strong><br/>${t("map.restaurant")}`,
     );
 
     const destPopup = event.destinationAddress
-      ? `<strong>Destination</strong><br/>${event.destinationAddress}`
-      : "<strong>Delivery destination</strong>";
+      ? `<strong>${t("map.destination")}</strong><br/>${event.destinationAddress}`
+      : `<strong>${t("map.destination")}</strong>`;
     upsertMarker("destination", event.gps.destination, destinationIcon, destPopup);
-    upsertMarker("courier", event.gps.courier, courierIcon, "<strong>Courier</strong>");
+    upsertMarker("courier", event.gps.courier, courierIcon, `<strong>${t("map.courier")}</strong>`);
 
     const gpsKey = [
       event.gps.restaurant ? `r:${event.gps.restaurant.lat},${event.gps.restaurant.lng}` : "",
@@ -148,7 +150,7 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
         map.fitBounds(L.latLngBounds(pts), { padding: [50, 50], maxZoom: 15 });
       }
     }
-  }, [event, hasLeaflet]);
+  }, [event, hasLeaflet, t]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -179,8 +181,8 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
         <div className="map-placeholder-icon">
           <MapIcon size={28} />
         </div>
-        <div className="map-placeholder-title">Map loading…</div>
-        <div className="map-placeholder-desc">Fetching tiles, one sec.</div>
+        <div className="map-placeholder-title">{t("map.loading")}</div>
+        <div className="map-placeholder-desc">{t("map.loadingDesc")}</div>
       </div>
     );
   }
@@ -192,10 +194,8 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
           <div className="map-placeholder-icon">
             <CheckCircle size={28} />
           </div>
-          <div className="map-placeholder-title">Delivered</div>
-          <div className="map-placeholder-desc">
-            Your order arrived. Location data isn't available for this delivery.
-          </div>
+          <div className="map-placeholder-title">{t("map.delivered")}</div>
+          <div className="map-placeholder-desc">{t("map.deliveredDesc")}</div>
         </div>
       );
     }
@@ -204,10 +204,8 @@ export default function Map({ event, courierTrail, isDelivered = false }: MapPro
         <div className="map-placeholder-icon">
           <Radio size={28} />
         </div>
-        <div className="map-placeholder-title">Waiting for location…</div>
-        <div className="map-placeholder-desc">
-          We'll pin the courier as soon as GPS data comes through.
-        </div>
+        <div className="map-placeholder-title">{t("map.waiting")}</div>
+        <div className="map-placeholder-desc">{t("map.waitingDesc")}</div>
       </div>
     );
   }

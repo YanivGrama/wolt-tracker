@@ -1,5 +1,6 @@
 import React from "react";
 import type { TrackingEvent } from "../../src/types";
+import { useLocale } from "../i18n";
 import { MapPin } from "./Icons";
 
 interface DeliveryCompleteProps {
@@ -16,22 +17,23 @@ function formatDuration(ms: number) {
 }
 
 export default function DeliveryComplete({ firstEvent, lastEvent }: DeliveryCompleteProps) {
+  const { t } = useLocale();
   const durationMs =
     new Date(lastEvent.timestamp).getTime() - new Date(firstEvent.timestamp).getTime();
 
   return (
     <div className="delivery-complete">
       <div className="delivery-complete-icon">🎉</div>
-      <h3>Delivered!</h3>
-      <p>Your order from {lastEvent.restaurantName} has arrived.</p>
+      <h3>{t("delivered.title")}</h3>
+      <p>{t("delivered.desc", { name: lastEvent.restaurantName })}</p>
 
       <div className="delivery-stats">
         <div className="delivery-stat">
-          <div className="delivery-stat-label">Total time</div>
-          <div className="delivery-stat-value">{formatDuration(durationMs)}</div>
+          <div className="delivery-stat-label">{t("delivered.totalTime")}</div>
+          <div className="delivery-stat-value" dir="ltr">{formatDuration(durationMs)}</div>
         </div>
         <div className="delivery-stat">
-          <div className="delivery-stat-label">Status updates</div>
+          <div className="delivery-stat-label">{t("delivered.updates")}</div>
           <div className="delivery-stat-value">—</div>
         </div>
       </div>
@@ -44,7 +46,7 @@ export default function DeliveryComplete({ firstEvent, lastEvent }: DeliveryComp
       )}
 
       <a href="/" className="new-track-btn">
-        Track another delivery
+        {t("delivered.trackAnother")}
       </a>
     </div>
   );

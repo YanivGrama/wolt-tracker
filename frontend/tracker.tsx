@@ -6,9 +6,15 @@ import StatusPanel from "./components/StatusPanel";
 import Timeline from "./components/Timeline";
 import DeliveryComplete from "./components/DeliveryComplete";
 import ThemeToggle from "./components/ThemeToggle";
+import LanguageToggle from "./components/LanguageToggle";
+import ResizeHandle from "./components/ResizeHandle";
 import { ArrowLeft, Share2, Bell, BellRing, Search, CircleHelp } from "./components/Icons";
+import { LocaleProvider, useLocale } from "./i18n";
 
 const Map = lazy(() => import("./components/Map"));
+
+const PANEL_WIDTH_KEY = "wolt-tracker-panel-width";
+const DEFAULT_PANEL_WIDTH = 360;
 
 // ─────────────────────────────────────────
 // Push notification helpers
@@ -78,13 +84,14 @@ async function unsubscribeFromPush(code: string): Promise<void> {
 // ─────────────────────────────────────────
 
 function ShareButton({ code }: { code: string }) {
+  const { t } = useLocale();
   const [toast, setToast] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
 
   function share() {
     const url = `${location.origin}/track/${code}`;
     if (navigator.share) {
-      navigator.share({ title: "Wolt delivery tracking", url }).catch(() => {});
+      navigator.share({ title: t("tracker.share.title"), url }).catch(() => {});
       return;
     }
     if (navigator.clipboard?.writeText) {
@@ -99,27 +106,28 @@ function ShareButton({ code }: { code: string }) {
 
   return (
     <>
-      <button className="icon-btn" onClick={share} title="Share tracking link" aria-label="Share tracking link">
+      <button className="icon-btn" onClick={share} title={t("tracker.share.title")} aria-label={t("tracker.share.title")}>
         <Share2 size={13} />
-        Share
+        {t("tracker.share")}
       </button>
 
       {toast && (
-        <div className="share-toast">Link copied to clipboard</div>
+        <div className="share-toast">{t("tracker.share.toast")}</div>
       )}
 
       {showFallback && (
         <div className="share-overlay" onClick={() => setShowFallback(false)}>
           <div className="share-dialog" onClick={(e) => e.stopPropagation()}>
-            <p className="share-dialog-label">Copy this link:</p>
+            <p className="share-dialog-label">{t("tracker.share.label")}</p>
             <input
               readOnly
               className="share-dialog-input"
               value={`${location.origin}/track/${code}`}
+              dir="ltr"
               onFocus={(e) => e.target.select()}
             />
             <button className="share-dialog-close" onClick={() => setShowFallback(false)}>
-              Done
+              {t("tracker.share.done")}
             </button>
           </div>
         </div>
@@ -133,6 +141,7 @@ function ShareButton({ code }: { code: string }) {
 // ─────────────────────────────────────────
 
 function NotificationButton({ code }: { code: string }) {
+  const { t } = useLocale();
   const [notifState, setNotifState] = useState<"on" | "off" | "unsupported">("off");
 
   useEffect(() => {
@@ -174,18 +183,18 @@ function NotificationButton({ code }: { code: string }) {
     <button
       className={`icon-btn${notifState === "on" ? " active" : ""}`}
       onClick={toggle}
-      title={notifState === "on" ? "Disable notifications" : "Enable notifications"}
-      aria-label={notifState === "on" ? "Disable notifications" : "Enable notifications"}
+      title={notifState === "on" ? t("tracker.notif.disable") : t("tracker.notif.enable")}
+      aria-label={notifState === "on" ? t("tracker.notif.disable") : t("tracker.notif.enable")}
     >
       {notifState === "on" ? (
         <>
           <BellRing size={13} />
-          Notifs on
+          {t("tracker.notif.on")}
         </>
       ) : (
         <>
           <Bell size={13} />
-          Notify me
+          {t("tracker.notif.off")}
         </>
       )}
     </button>
@@ -197,16 +206,18 @@ function NotificationButton({ code }: { code: string }) {
 // ─────────────────────────────────────────
 
 function NotFound({ code }: { code: string }) {
+  const { t } = useLocale();
   return (
     <div className="not-found-state">
       <Search size={48} className="not-found-icon" />
-      <h2>No tracking data found</h2>
+      <h2>{t("tracker.notfound.title")}</h2>
       <p>
-        We couldn't find any data for <code style={{ fontFamily: "var(--font-mono)", fontSize: "12px" }}>{code}</code>.
-        The link may be expired or the tracking hasn't started yet.
+        {t("tracker.notfound.desc1")}{" "}
+        <code dir="ltr" style={{ fontFamily: "var(--font-mono)", fontSize: "12px" }}>{code}</code>.{" "}
+        {t("tracker.notfound.desc2")}
       </p>
       <a href="/" className="new-track-btn">
-        Track a new delivery
+        {t("tracker.notfound.btn")}
       </a>
     </div>
   );
@@ -217,8 +228,18 @@ function NotFound({ code }: { code: string }) {
 // ─────────────────────────────────────────
 
 function TrackerPage({ code }: { code: string }) {
+  const { t } = useLocale();
   const tracker = useTracker(code);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(() => {
+    const stored = localStorage.getItem(PANEL_WIDTH_KEY);
+    return stored ? Number(stored) : DEFAULT_PANEL_WIDTH;
+  });
+
+  const handleResize = useCallback((w: number) => {
+    setPanelWidth(w);
+    localStorage.setItem(PANEL_WIDTH_KEY, String(Math.round(w)));
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setInitialLoadDone(true), 3000);
@@ -246,22 +267,23 @@ function TrackerPage({ code }: { code: string }) {
       <div className="tracker">
         <header className="tracker-header">
           <div className="tracker-header-left">
-            <a href="/" className="back-btn" title="Back to home" aria-label="Back to home">
+            <a href="/" className="back-btn" title={t("tracker.back")} aria-label={t("tracker.back")}>
               <ArrowLeft size={16} />
             </a>
             <div className="tracker-brand">
               <div className="tracker-brand-icon">🛵</div>
-              <span className="tracker-brand-name">Wolt Tracker</span>
+              <span className="tracker-brand-name">{t("brand")}</span>
             </div>
-            <span className="tracker-code-pill">{code}</span>
+            <span className="tracker-code-pill" dir="ltr">{code}</span>
           </div>
           <div className="tracker-header-actions">
+            <LanguageToggle />
             <ThemeToggle />
           </div>
         </header>
         <div className="loading-state">
           <div className="spinner" style={{ width: 28, height: 28, borderWidth: 3 }} />
-          <p>Connecting to tracker…</p>
+          <p>{t("tracker.connecting")}</p>
         </div>
       </div>
     );
@@ -271,33 +293,39 @@ function TrackerPage({ code }: { code: string }) {
     return <NotFound code={code} />;
   }
 
+  const gridCols = `1fr auto ${panelWidth}px`;
+
   return (
     <div className="tracker">
       <header className="tracker-header">
         <div className="tracker-header-left">
-          <a href="/" className="back-btn" title="Back to home" aria-label="Back to home">
+          <a href="/" className="back-btn" title={t("tracker.back")} aria-label={t("tracker.back")}>
             <ArrowLeft size={16} />
           </a>
           <div className="tracker-brand">
             <div className="tracker-brand-icon">🛵</div>
-            <span className="tracker-brand-name">Wolt Tracker</span>
+            <span className="tracker-brand-name">{t("brand")}</span>
           </div>
-          <span className="tracker-code-pill">{code}</span>
+          <span className="tracker-code-pill" dir="ltr">{code}</span>
         </div>
 
         <div className="tracker-header-actions">
           <ShareButton code={code} />
           {!isDelivered && <NotificationButton code={code} />}
+          <LanguageToggle />
           <ThemeToggle />
         </div>
       </header>
 
-      <div className="tracker-main">
+      <div
+        className="tracker-main"
+        style={{ gridTemplateColumns: gridCols }}
+      >
         <div className="map-container">
           <Suspense fallback={
             <div className="map-placeholder">
               <div className="map-placeholder-icon">🗺️</div>
-              <p>Loading map…</p>
+              <p>{t("map.loading")}</p>
             </div>
           }>
             <Map
@@ -311,17 +339,19 @@ function TrackerPage({ code }: { code: string }) {
             <div className="delivered-badge">
               <div className="delivered-badge-icon">✓</div>
               <div>
-                <div className="delivered-badge-title">Delivered</div>
-                <div className="delivered-badge-sub">Order complete</div>
+                <div className="delivered-badge-title">{t("tracker.delivered")}</div>
+                <div className="delivered-badge-sub">{t("tracker.delivered.sub")}</div>
               </div>
             </div>
           ) : tracker.currentEvent?.eta.minutes != null && (
             <div className="eta-badge">
-              <div className="eta-badge-num">{tracker.currentEvent.eta.minutes}</div>
-              <div className="eta-badge-label">min to delivery</div>
+              <div className="eta-badge-num" dir="ltr">{tracker.currentEvent.eta.minutes}</div>
+              <div className="eta-badge-label">{t("tracker.eta.min")}</div>
             </div>
           )}
         </div>
+
+        <ResizeHandle onResize={handleResize} />
 
         <div className="tracker-panel">
           <div className="tracker-panel-scroll">
@@ -362,15 +392,16 @@ function TrackerPage({ code }: { code: string }) {
 // ─────────────────────────────────────────
 
 function App() {
+  const { t } = useLocale();
   const code = location.pathname.replace(/^\/track\//, "").split("?")[0]?.trim();
 
   if (!code) {
     return (
       <div className="not-found-state">
         <CircleHelp size={48} className="not-found-icon" />
-        <h2>Invalid tracking URL</h2>
-        <p>No tracking code found in the URL.</p>
-        <a href="/" className="new-track-btn">Go home</a>
+        <h2>{t("tracker.invalid.title")}</h2>
+        <p>{t("tracker.invalid.desc")}</p>
+        <a href="/" className="new-track-btn">{t("tracker.invalid.btn")}</a>
       </div>
     );
   }
@@ -379,4 +410,8 @@ function App() {
 }
 
 const root = createRoot(document.getElementById("root")!);
-root.render(<App />);
+root.render(
+  <LocaleProvider>
+    <App />
+  </LocaleProvider>,
+);

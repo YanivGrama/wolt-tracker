@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import "./styles/globals.css";
 import { Zap, Bell, LinkIcon, Link2, AlertCircle } from "./components/Icons";
 import ThemeToggle from "./components/ThemeToggle";
+import LanguageToggle from "./components/LanguageToggle";
+import { LocaleProvider, useLocale, timeLocale } from "./i18n";
 
 const WOLT_URL_RE = /https?:\/\/track\.wolt\.com\/(?:[^/]+\/)?s\/([A-Za-z0-9_-]+)/;
 
@@ -23,27 +25,11 @@ function stepColor(step: number): string {
   return "var(--step-inactive)";
 }
 
-function stepLabel(step: number): string {
-  const labels: Record<number, string> = {
-    0: "Not started",
-    1: "Received",
-    2: "Confirmed",
-    3: "Preparing",
-    4: "On the way",
-    5: "Delivered",
-  };
-  return labels[step] ?? "Unknown";
-}
-
-function timeAgo(iso?: string): string {
-  if (!iso) return "";
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return new Date(iso).toLocaleDateString("en-GB");
+function cardStepClass(step: number): string {
+  if (step >= 5) return "step-delivered";
+  if (step >= 4) return "step-active";
+  if (step >= 3) return "step-preparing";
+  return "step-default";
 }
 
 function durationStr(startIso?: string, endIso?: string): string {
@@ -56,15 +42,24 @@ function durationStr(startIso?: string, endIso?: string): string {
   return `${h}h ${mins % 60}m`;
 }
 
-function cardStepClass(step: number): string {
-  if (step >= 5) return "step-delivered";
-  if (step >= 4) return "step-active";
-  if (step >= 3) return "step-preparing";
-  return "step-default";
-}
-
 function RecentDeliveries() {
+  const { t, locale } = useLocale();
   const [logs, setLogs] = useState<LogEntry[]>([]);
+
+  function stepLabel(step: number): string {
+    return t(`step.${step}` as any);
+  }
+
+  function timeAgo(iso?: string): string {
+    if (!iso) return "";
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60_000);
+    if (mins < 1) return t("time.justNow");
+    if (mins < 60) return t("time.mAgo", { n: mins });
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return t("time.hAgo", { n: hours });
+    return new Date(iso).toLocaleDateString(timeLocale(locale));
+  }
 
   useEffect(() => {
     fetch("/api/logs")
@@ -77,7 +72,7 @@ function RecentDeliveries() {
 
   return (
     <div className="recent-section">
-      <div className="recent-label">Recent deliveries</div>
+      <div className="recent-label">{t("landing.recent.title")}</div>
       <div className="recent-grid">
         {logs.map((log) => {
           const dur = durationStr(log.startedAt, log.lastUpdatedAt);
@@ -88,7 +83,7 @@ function RecentDeliveries() {
               className={`recent-card ${cardStepClass(log.lastStep)}`}
             >
               <div className="recent-card-name">{log.restaurantName}</div>
-              <div className="recent-card-meta">{log.code.slice(0, 14)}…</div>
+              <div className="recent-card-meta" dir="ltr">{log.code.slice(0, 14)}…</div>
               <div className="recent-card-status">
                 <div
                   className="step-dot"
@@ -105,10 +100,10 @@ function RecentDeliveries() {
               </div>
               {(dur || log.eventCount > 0) && (
                 <div className="recent-card-duration">
-                  {dur && <span>{dur} total</span>}
+                  {dur && <span>{dur} {t("landing.recent.total")}</span>}
                   {dur && log.eventCount > 0 && <span> · </span>}
                   {log.eventCount > 0 && (
-                    <span className="recent-card-events">{log.eventCount} events</span>
+                    <span className="recent-card-events">{log.eventCount} {t("landing.recent.events")}</span>
                   )}
                 </div>
               )}
@@ -121,6 +116,7 @@ function RecentDeliveries() {
 }
 
 function LandingPage() {
+  const { t } = useLocale();
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -136,7 +132,7 @@ function LandingPage() {
 
     const match = url.match(WOLT_URL_RE);
     if (!match) {
-      setError("That doesn't look like a valid Wolt tracking link. It should start with track.wolt.com.");
+      setError(t("landing.error.invalid"));
       return;
     }
 
@@ -153,14 +149,14 @@ function LandingPage() {
       const data = (await res.json()) as { code?: string; error?: string };
 
       if (!res.ok || !data.code) {
-        setError(data.error ?? "Something went wrong. Please try again.");
+        setError(data.error ?? t("landing.error.generic"));
         setLoading(false);
         return;
       }
 
       window.location.href = `/track/${data.code}`;
     } catch {
-      setError("Network error. Please check your connection and try again.");
+      setError(t("landing.error.network"));
       setLoading(false);
     }
   }
@@ -193,8 +189,9 @@ function LandingPage() {
     <div className="landing">
       <header className="landing-header">
         <div className="landing-logo">🛵</div>
-        <span className="landing-title">Wolt Tracker</span>
-        <div style={{ marginLeft: "auto" }}>
+        <span className="landing-title">{t("brand")}</span>
+        <div style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          <LanguageToggle />
           <ThemeToggle />
         </div>
       </header>
@@ -202,22 +199,19 @@ function LandingPage() {
       <main className="landing-body">
         <div className="landing-hero">
           <h1>
-            Track your Wolt delivery<br />
-            in <span className="accent">real time</span>.
+            {t("landing.hero.title1")}<br />
+            <span className="accent">{t("landing.hero.title2")}</span>
           </h1>
-          <p>
-            Paste your tracking link below — we'll show you exactly where your
-            courier is and when to expect your order.
-          </p>
+          <p>{t("landing.hero.subtitle")}</p>
           <div className="feature-chips">
             <span className="feature-chip">
-              <Zap size={14} className="chip-icon" /> Real-time
+              <Zap size={14} className="chip-icon" /> {t("landing.chip.realtime")}
             </span>
             <span className="feature-chip">
-              <Bell size={14} className="chip-icon" /> Push alerts
+              <Bell size={14} className="chip-icon" /> {t("landing.chip.push")}
             </span>
             <span className="feature-chip">
-              <LinkIcon size={14} className="chip-icon" /> Shareable
+              <LinkIcon size={14} className="chip-icon" /> {t("landing.chip.share")}
             </span>
           </div>
         </div>
@@ -225,7 +219,7 @@ function LandingPage() {
         <div className="landing-input-card">
           <form onSubmit={onSubmit} style={{ width: "100%" }}>
             <div className="input-wrapper">
-              <label htmlFor="tracking-url" className="sr-only">Wolt tracking URL</label>
+              <label htmlFor="tracking-url" className="sr-only">{t("landing.input.label")}</label>
               <span className="input-icon">
                 <Link2 size={16} />
               </span>
@@ -235,7 +229,7 @@ function LandingPage() {
                 id="tracking-url"
                 type="url"
                 className={`url-input${error ? " error" : ""}`}
-                placeholder="Paste your Wolt tracking link…"
+                placeholder={t("landing.input.placeholder")}
                 value={value}
                 onChange={onChange}
                 onPaste={onPaste}
@@ -244,6 +238,7 @@ function LandingPage() {
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck={false}
+                dir="ltr"
                 aria-describedby={error ? "url-error" : !hasValue ? "url-hint" : undefined}
                 aria-invalid={!!error}
               />
@@ -263,14 +258,14 @@ function LandingPage() {
             )}
 
             {!error && !hasValue && (
-              <div className="input-hint" id="url-hint">
-                Link looks like: track.wolt.com/…/s/AbCdEf…
+              <div className="input-hint" id="url-hint" dir="ltr">
+                {t("landing.input.hint")}
               </div>
             )}
 
             {hasValue && !loading && (
               <button type="submit" className="track-btn">
-                Track delivery
+                {t("landing.input.btn")}
               </button>
             )}
           </form>
@@ -283,4 +278,8 @@ function LandingPage() {
 }
 
 const root = createRoot(document.getElementById("root")!);
-root.render(<LandingPage />);
+root.render(
+  <LocaleProvider>
+    <LandingPage />
+  </LocaleProvider>,
+);

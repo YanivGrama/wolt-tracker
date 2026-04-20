@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import type { TrackingEvent } from "../../src/types";
+import { useLocale, timeLocale } from "../i18n";
 import { Clock, Bike, MapPin, Dot, Play, Pause, ChevronLeft, ChevronRight, SkipBack, SkipForward } from "./Icons";
 
 interface TimelineProps {
@@ -7,14 +8,6 @@ interface TimelineProps {
   currentIndex: number;
   isLive: boolean;
   onIndexChange: (index: number) => void;
-}
-
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
 }
 
 function formatDuration(ms: number) {
@@ -84,10 +77,19 @@ export default function Timeline({
   isLive,
   onIndexChange,
 }: TimelineProps) {
+  const { t, locale } = useLocale();
   const [playing, setPlaying] = useState(false);
   const playRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dotsRef = useRef<HTMLDivElement>(null);
   const activeDotRef = useRef<HTMLButtonElement>(null);
+
+  function formatTime(iso: string) {
+    return new Date(iso).toLocaleTimeString(timeLocale(locale), {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  }
 
   if (events.length === 0) return null;
 
@@ -166,44 +168,44 @@ export default function Timeline({
     <div className="timeline" onKeyDown={handleKeyDown} tabIndex={0}>
       {/* Playback controls */}
       <div className="timeline-controls">
-        <button className="tl-btn" onClick={() => onIndexChange(0)} title="First event" aria-label="First event">
+        <button className="tl-btn" onClick={() => onIndexChange(0)} title={t("timeline.first")} aria-label={t("timeline.first")}>
           <SkipBack size={13} />
         </button>
-        <button className="tl-btn" onClick={() => currentIndex > 0 && onIndexChange(currentIndex - 1)} title="Previous" aria-label="Previous event">
+        <button className="tl-btn" onClick={() => currentIndex > 0 && onIndexChange(currentIndex - 1)} title={t("timeline.prev")} aria-label={t("timeline.prevEvent")}>
           <ChevronLeft size={13} />
         </button>
         <button
           className={`tl-btn tl-play${playing ? " active" : ""}`}
           onClick={() => playing ? stopPlayback() : startPlayback()}
-          title={playing ? "Pause" : "Play"}
-          aria-label={playing ? "Pause playback" : "Play through events"}
+          title={playing ? t("timeline.pause") : t("timeline.play")}
+          aria-label={playing ? t("timeline.pausePlayback") : t("timeline.playThrough")}
         >
           {playing ? <Pause size={13} /> : <Play size={13} />}
         </button>
-        <button className="tl-btn" onClick={() => currentIndex < max && onIndexChange(currentIndex + 1)} title="Next" aria-label="Next event">
+        <button className="tl-btn" onClick={() => currentIndex < max && onIndexChange(currentIndex + 1)} title={t("timeline.next")} aria-label={t("timeline.nextEvent")}>
           <ChevronRight size={13} />
         </button>
-        <button className="tl-btn" onClick={() => onIndexChange(max)} title="Latest event" aria-label="Latest event">
+        <button className="tl-btn" onClick={() => onIndexChange(max)} title={t("timeline.latest")} aria-label={t("timeline.latest")}>
           <SkipForward size={13} />
         </button>
 
-        <span className="timeline-counter">
+        <span className="timeline-counter" dir="ltr">
           {currentIndex + 1} / {events.length}
         </span>
 
         <span className="timeline-meta-right">
-          {elapsed > 0 && <span className="timeline-elapsed">+{formatDuration(elapsed)}</span>}
+          {elapsed > 0 && <span className="timeline-elapsed" dir="ltr">+{formatDuration(elapsed)}</span>}
           {isLive && (
             <span className="badge badge-live" style={{ fontSize: "11px", padding: "2px 7px" }}>
               <span className="pulse-dot" />
-              Live
+              {t("timeline.live")}
             </span>
           )}
         </span>
       </div>
 
-      {/* Slider */}
-      <div className="timeline-slider-row">
+      {/* Slider — always LTR for time semantics */}
+      <div className="timeline-slider-row" dir="ltr">
         <span className="timeline-time">{formatTime(first.timestamp)}</span>
         <input
           type="range"
@@ -235,8 +237,8 @@ export default function Timeline({
         </div>
       )}
 
-      {/* Step-colored dots */}
-      <div className="timeline-dots" ref={dotsRef}>
+      {/* Step-colored dots — always LTR chronological */}
+      <div className="timeline-dots" ref={dotsRef} dir="ltr">
         {events.map((ev, i) => {
           const isActive = i === currentIndex;
           const isStatusChange = hasStatusChange(i);

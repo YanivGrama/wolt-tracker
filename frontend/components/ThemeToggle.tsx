@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocale } from "../i18n";
 import { Sun, Moon } from "./Icons";
 
 type Theme = "light" | "dark" | "system";
@@ -14,6 +15,7 @@ function applyTheme(theme: Theme) {
 }
 
 export default function ThemeToggle() {
+  const { t } = useLocale();
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem("wolt-tracker-theme") as Theme | null;
     return stored ?? "system";
@@ -37,13 +39,15 @@ export default function ThemeToggle() {
   }
 
   const resolved = theme === "system" ? getSystemTheme() : theme;
+  const nextMode = resolved === "dark" ? t("theme.light") : t("theme.dark");
+  const label = t("theme.switchTo", { mode: nextMode });
 
   return (
     <button
       className="theme-toggle"
       onClick={toggle}
-      title={`Switch to ${resolved === "dark" ? "light" : "dark"} mode`}
-      aria-label={`Switch to ${resolved === "dark" ? "light" : "dark"} mode`}
+      title={label}
+      aria-label={label}
     >
       {resolved === "dark" ? <Sun size={16} /> : <Moon size={16} />}
     </button>
